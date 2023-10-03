@@ -11,7 +11,7 @@ echo -en "changeme01\nchangeme01\nchangeme01\n" | passwd kub
 echo -e "Enable access from ssh keys\n"
 mkdir -p /home/kub/.ssh/
 touch /home/kub/.ssh/authorized_keys
-cat $HOME/.ikctl/id_rsa_kubernetes-unelink.pub >> /home/kub/.ssh/authorized_keys
+cat $HOME/.ikctl/id_rsa_kubernetes.pub >> /home/kub/.ssh/authorized_keys
 chmod 700 /home/kub/.ssh
 chmod 600 /home/kub/.ssh/authorized_keys
 chown 1000.1000 /home/kub -R
