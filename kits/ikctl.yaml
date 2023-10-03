@@ -18,5 +18,3 @@ kits:
   - minio/ikctl.yaml
   - forwarder/ikctl.yaml
   - install_proxmox_exporter/ikctl.yaml
-  - sonic/ikctl.yaml
-  # - reset/ikctl.yaml
