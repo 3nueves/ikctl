@@ -14,7 +14,7 @@ export NETWORK="10.100.0.0/24"
 export SHORT_NET="10.100.0"
 export SEARCH=""
 export DNS="false"
-export ZONE="forum.ibits.lan"
+export ZONE="test.test.lan"
 export REVERSE_ZONE="0.60.10.in-addr.arpa"
 export HOSTNAME=$(hostname)
 
