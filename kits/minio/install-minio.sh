@@ -14,7 +14,7 @@ echo -e "## Add ssh key------------------------------------------\n"
 
 mkdir -p /home/minio-user/.ssh/
 touch /home/minio-user/.ssh/authorized_keys
-cat $HOME/ikctl/id_rsa_kubernetes-unelink.pub >> /home/minio-user/.ssh/authorized_keys
+cat $HOME/ikctl/id_rsa_kubernetes.pub >> /home/minio-user/.ssh/authorized_keys
 chown minio-user. /home/minio-user/.ssh -R
 
 echo "## add sudores"
