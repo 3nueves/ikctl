@@ -4,3 +4,9 @@
 # 4.- Avisar que no hay ninguna ruta para cargar kits y servers
 # 5.- Si existe el fichero cargarlo
 
+from os import path
+
+
+p = "/home/dml"
+
+print(path.basename(p))
