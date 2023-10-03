@@ -1,0 +1,4 @@
+# kits: /home/dml/git/gitlab/invisiblebits/infrastructure/on-premise/k8s-mis2/kits/
+kits: /home/dml/git/gitlab/invisiblebits/infrastructure/on-premise/k8s/kits/
+# kits: /home/dml/git/gitlab/invisiblebits/infrastructure/on-premise/k8s-akwa/kits/ikctl.yaml
+# - ../kits/ikctl.yaml
