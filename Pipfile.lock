@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d398cdfc4429d7054184e374d54b9b1ca4d020fa48fbc9dafa14bf2a5d6af15d"
+            "sha256": "db6da6de47fda5f2304e6fbf6bc7872520757a5f34f0358c070d2a060617bb5a"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -129,6 +129,14 @@
             ],
             "markers": "python_version >= '3.7'",
             "version": "==41.0.4"
+        },
+        "envyaml": {
+            "hashes": [
+                "sha256:88f8a076159e3c317d3450a5f404132b6ac91aecee4934ea72eac65f911f1244",
+                "sha256:8d7a7a6be12587cc5da32a587067506b47b849f4643981099ad148015a72de52"
+            ],
+            "index": "pypi",
+            "version": "==1.10.211231"
         },
         "ikctl": {
             "editable": true,

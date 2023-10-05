@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 ikctl = {editable = true, path = "."}
+envyaml = "*"
 
 [dev-packages]
 
