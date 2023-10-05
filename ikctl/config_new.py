@@ -22,8 +22,8 @@ class Config():
         except FileNotFoundError:
             print('This file doesn\'t exist')
     
-    def __load_config_file_kits(self):
+    def load_config_file_kits(self):
         pass
 
-    def __load_config_file_servers(self):
+    def load_config_file_servers(self):
         pass
