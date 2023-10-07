@@ -9,42 +9,40 @@ from connect import Connection
 
 class Pipeline:
 
-    path = []
-    files = []
-    log = Log()
-    exe = Exec()
-    view = Show()
-    sftp = Sftp()
-    data = Config()
-    connection = []
-    logger = logging
-    file = "ikctl.yaml"
-    kit_not_match = True
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self):
+
+        self.path = []
+        self.files = []
+        self.log = Log()
+        self.exe = Exec()
+        self.view = Show()
+        self.sftp = Sftp()
+        self.data = Config()
+        self.connection = []
+        self.logger = logging
+        self.file = "ikctl.yaml"
+        self.kit_not_match = True
+        self.config_kits = self.data.load_config_file_kits()
+        self.config_servers = self.data.load_config_file_servers()
 
     def init(self, options):
 
         self.logger = logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-        # load servers config
-        config = self.view.load_config("config.yaml")
-        user, port, pkey, hosts, password = self.data.extract_config_servers(config, options.name)
+        # load servers
+        user, port, pkey, hosts, password = self.data.extract_config_servers(self.config_servers, options.name)
 
-        if options.list == "servers":
-            self.file = "config.yaml"
+        # load kit
+        kit = self.data.extrac_config_kits(self.config_kits, options.name)
 
         # show configuration
         if options.list:
-            self.view.show_config(self.file)
+            self.view.show_config(options.list)
 
         # init install
         if options.install:
-            # load kits config
-            config = self.view.load_config(self.file)
-            path_ikctl = self.view.load_ikctl("ikctl.yaml") 
 
             # Create path to scripts
             for co in config["kits"]:
