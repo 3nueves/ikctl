@@ -1,12 +1,8 @@
-from config import Config
-
 class Show:
 
-    data = Config()
-
-    def __init__(self):
-        self.kits = self.data.load_config_file_kits()
-        self.servers = self.data.load_config_file_servers()
+    def __init__(self, kits, servers):
+        self.kits = kits
+        self.servers = servers
 
     def show_config(self, conf):            
 
@@ -14,23 +10,15 @@ class Show:
         if "kit" in conf: 
             print("### KITS ###")
             print("------------")
-            self.print_config(self.kits)
+            for value in self.kits['kits']:
+                print("-- ", value.replace("/ikctl.yaml", ""))
 
         if "servers" in conf: 
             print("### SERVERS ###")
             print("---------------")
-            self.print_config(self.servers)
-
-        print()
-
-
-    def print_config(self, conf):
-
-        if "kits" in conf:
-            for value in conf['kits']:
-                print("-- ", value.replace("/ikctl.yaml", ""))
-        if "servers" in conf:
-            for value in conf['servers']:
+            for value in self.servers['servers']:
                 print()
                 for a in value.items():
                     print(a)
+
+        print()
