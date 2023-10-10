@@ -67,10 +67,10 @@ class Pipeline:
                     self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
                     self.kit_not_match = False
                         
-                    if ".sh" in remote_kit:
-                        check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
-                        self.log.stdout(self.logger, log, err, check, level="DEBUG")
+                if ".sh" in remote_kit:
+                    check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
+                    self.log.stdout(self.logger, log, err, check, level="DEBUG")
 
-                    self.logger.info(":END\n")
+                self.logger.info(":END\n")
 
                 conn.close_conn_sftp()
