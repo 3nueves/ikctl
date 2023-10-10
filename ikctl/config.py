@@ -1,18 +1,14 @@
-# 1.- Cargar archivo desde la $HOME/.ikctl
-# 2.- Comprobar que existe el directorio $HOME/.ikctl
-# 3.- Si no existe avisar que no existe
-# 5.- Si existe el fichero cargarlo y retornarlo
-
 import pathlib
 import os
 import sys
 import yaml
 from yaml.loader import SafeLoader
 from envyaml import EnvYAML
+from create_config_files import CreateFolderAndConfigFile
 
 class Config():
     """
-    Load path where are kits
+    Manage path where are kits
 
     var:
         change_context => Value to change context
@@ -20,14 +16,19 @@ class Config():
 
     def __init__(self, change_context=None):
         self.config = ""
-        self.kits = []
-        self.hosts = []
         self.change_context = change_context
         self.home = pathlib.Path.home()
         self.path_config_file = self.home.joinpath('.ikctl/config')
+        self.create_config_file = CreateFolderAndConfigFile()
+        self.__create_folder_and_config_file()
         self.__load_config_file_where_are_kits()
         self.context = self.config['context']
 
+    def __create_folder_and_config_file(self):
+        # Create Config file if not exist
+
+        self.create_config_file.create_folder()
+        self.create_config_file.create_config_file()
 
     def __load_config_file_where_are_kits(self):
         """ Load Config ikctl """
@@ -35,7 +36,8 @@ class Config():
         try:
             self.config = EnvYAML(self.path_config_file, strict=False)
         except FileNotFoundError:
-            print(f'config file not found or variable $VAR not defined')
+            print("\nConfig file not found or not configured or env not defined\n")
+            sys.exit()
 
         return self.config
 
@@ -46,7 +48,7 @@ class Config():
         try:
             return EnvYAML(kits + "/ikctl.yaml")
         except:
-            print(f'config file not found or variable $VAR not defined')
+            print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
         
 
@@ -57,7 +59,7 @@ class Config():
         try:
             return EnvYAML(servers + "/config.yaml")
         except:
-            print(f'config file not found or variable $VAR not defined')
+            print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
     
 
@@ -82,32 +84,33 @@ class Config():
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
 
+        hosts = []
+
         for m in config["servers"]:
             if group == m["name"]:
-                self.user     = m.get("user", "kub")
-                self.port     = m.get("port", 22)
-                self.password = m.get("password", "test")
-                # if self.password.startswith('$'):
-                #     self.password = os.getenv(self.password[1:])
-                self.pkey     = m.get("pkey", None)
+                user     = m.get("user", "kub")
+                port     = m.get("port", 22)
+                password = m.get("password", "test")
+                pkey     = m.get("pkey", None)
                 for host in m["hosts"]:
-                    self.hosts.append(host)
-            elif group == None:
-                self.user     = m.get("user", "kub")
-                self.port     = m.get("port", 22)
-                self.password = m.get("password", "test")
-                # if self.password.startswith('$'):
-                #     self.password = os.getenv(self.password[1:])
-                self.pkey     = m.get("pkey", None)
+                    hosts.append(host)
+            elif group is None:
+                user     = m.get("user", "kub")
+                port     = m.get("port", 22)
+                password = m.get("password", "test")
+                pkey     = m.get("pkey", None)
                 for host in m["hosts"]:
-                    self.hosts.append(host)
+                    hosts.append(host)
             else:
                 print("Host not found")
                 sys.exit()
                 
-        return self.user, self.port, self.pkey, self.hosts, self.password
+        return user, port, pkey, hosts, password
     
     def extrac_config_kits(self, config, name_kit):
+        """ Extract values from config file """
+
+        kits = []
 
         # Ruta donde se encuentran los kits
         path_kits = self.config['contexts'][self.context]['path_kits']
@@ -119,8 +122,9 @@ class Config():
             if name_kit == os.path.dirname(kit):
 
                 # Generamos las rutas hasta donde están los kits
+                # para poder subirlos a los servidores
                 path_until_folder = os.path.dirname(path_kits + "/" + kit)
                 object_with_path = EnvYAML(path_kits + "/" + kit)
                 for k in object_with_path['kits']:
-                    self.kits.append(path_until_folder + "/" + k)
-                return self.kits
+                    kits.append(path_until_folder + "/" + k)
+                return kits
