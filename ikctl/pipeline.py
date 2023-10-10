@@ -58,19 +58,21 @@ class Pipeline:
                     self.logger.info(f"Create folder ikctl")
                     self.sftp.create_folder(conn.connection_sftp)
 
+                print("###  Starting ikctl ###\n")
+
+                self.logger.info(f'HOST: {conn.host}\n')
+
                 for local_kit in kits:
                     # Ruta destino donde subiremos el kits en el servidor remoto
                     remote_kit = ".ikctl/" + path.basename(local_kit)
-                    print()
-                    self.logger.info(f'HOST: {conn.host}\n')
                     self.logger.info(f'UPLOAD: {remote_kit}\n')
                     self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
                     self.kit_not_match = False
                         
-                    if ".sh" in remote_kit:
-                        check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
-                        self.log.stdout(self.logger, log, err, check, level="DEBUG")
+                if ".sh" in remote_kit:
+                    check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
+                    self.log.stdout(self.logger, log, err, check, level="DEBUG")
 
-                    self.logger.info(":END\n")
+                self.logger.info(":END\n")
 
                 conn.close_conn_sftp()
