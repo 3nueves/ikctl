@@ -1,5 +1,3 @@
-# 1.- Si no existe $HOME/.ikctl/config crearlo
-
 import pathlib
 import yaml
 from os import path

@@ -1,8 +1,3 @@
-# 1.- Cargar archivo desde la $HOME/.ikctl
-# 2.- Comprobar que existe el directorio $HOME/.ikctl
-# 3.- Si no existe avisar que no existe
-# 5.- Si existe el fichero cargarlo y retornarlo
-
 import pathlib
 import os
 import sys
