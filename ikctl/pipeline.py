@@ -18,7 +18,6 @@ class Pipeline:
         self.files = []
         self.log = Log()
         self.exe = Exec()
-        self.view = Show()
         self.sftp = Sftp()
         self.data = Config()
         self.connection = []
@@ -27,6 +26,7 @@ class Pipeline:
         self.kit_not_match = True
         self.config_kits = self.data.load_config_file_kits()
         self.config_servers = self.data.load_config_file_servers()
+        self.view = Show(self.config_kits, self.config_servers)
 
     def init(self, options):
 
