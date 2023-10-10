@@ -41,7 +41,7 @@ class Config():
         try:
             self.config = EnvYAML(self.path_config_file, strict=False)
         except FileNotFoundError:
-            print("config file not found or not configured or env not defined")
+            print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
 
         return self.config
@@ -52,8 +52,8 @@ class Config():
         kits = (self.config['contexts'][self.context]['path_kits'])
         try:
             return EnvYAML(kits + "/ikctl.yaml")
-        except FileNotFoundError:
-            print('config file not found or variable $VAR not defined')
+        except:
+            print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
         
 
@@ -63,8 +63,8 @@ class Config():
         servers = (self.config['contexts'][self.context]['path_servers'])
         try:
             return EnvYAML(servers + "/config.yaml")
-        except FileNotFoundError:
-            print('config file not found or variable $VAR not defined')
+        except:
+            print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
     
 
