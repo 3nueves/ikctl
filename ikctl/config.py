@@ -9,6 +9,7 @@ import sys
 import yaml
 from yaml.loader import SafeLoader
 from envyaml import EnvYAML
+from create_config_files import CreateFolderAndConfigFile
 
 class Config():
     """
@@ -25,9 +26,16 @@ class Config():
         self.change_context = change_context
         self.home = pathlib.Path.home()
         self.path_config_file = self.home.joinpath('.ikctl/config')
+        self.create_config_file = CreateFolderAndConfigFile()
+        self.__create_folder_and_config_file()
         self.__load_config_file_where_are_kits()
         self.context = self.config['context']
 
+    def __create_folder_and_config_file(self):
+        # Create Config file if not exist
+
+        self.create_config_file.create_folder()
+        self.create_config_file.create_config_file()
 
     def __load_config_file_where_are_kits(self):
         """ Load Config ikctl """
@@ -35,7 +43,8 @@ class Config():
         try:
             self.config = EnvYAML(self.path_config_file, strict=False)
         except FileNotFoundError:
-            print(f'config file not found or variable $VAR not defined')
+            print("config file not found or not configured or env not defined")
+            sys.exit()
 
         return self.config
 
