@@ -7,6 +7,7 @@ from sftp import Sftp
 from execute import Exec
 from config import Config
 from connect import Connection
+from context import Context
 
 
 class Pipeline:
@@ -18,15 +19,17 @@ class Pipeline:
         self.files = []
         self.log = Log()
         self.exe = Exec()
-        self.view = Show()
         self.sftp = Sftp()
         self.data = Config()
         self.connection = []
         self.logger = logging
         self.file = "ikctl.yaml"
         self.kit_not_match = True
+        self.context = Context()
         self.config_kits = self.data.load_config_file_kits()
         self.config_servers = self.data.load_config_file_servers()
+        self.config_contexts = self.context.config
+        self.view = Show(self.config_kits, self.config_servers, self.config_contexts)
 
     def init(self, options):
 
@@ -35,6 +38,10 @@ class Pipeline:
 
         # load server
         user, port, pkey, hosts, password = self.data.extract_config_servers(self.config_servers, options.name)
+
+        # manage context
+        if options.context:
+            self.context.change_context(options.context)
                 
         # show configuration
         if options.list:
