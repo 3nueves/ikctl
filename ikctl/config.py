@@ -5,9 +5,7 @@ from envyaml import EnvYAML
 from create_config_files import CreateFolderAndConfigFile
 
 class Config():
-    """
-    Manage path where are kits
-    """
+    """ Manage path kits """
 
     def __init__(self):
         self.config = ""
