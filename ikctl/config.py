@@ -1,8 +1,6 @@
 import pathlib
 import os
 import sys
-import yaml
-from yaml.loader import SafeLoader
 from envyaml import EnvYAML
 from create_config_files import CreateFolderAndConfigFile
 
@@ -14,9 +12,8 @@ class Config():
         change_context => Value to change context
     """
 
-    def __init__(self, change_context=None):
+    def __init__(self):
         self.config = ""
-        self.change_context = change_context
         self.home = pathlib.Path.home()
         self.path_config_file = self.home.joinpath('.ikctl/config')
         self.create_config_file = CreateFolderAndConfigFile()
@@ -61,24 +58,6 @@ class Config():
         except:
             print("\nConfig file not found or not configured or env not defined\n")
             sys.exit()
-    
-
-    def manage_context(self):
-        """Change context"""
-
-        # Convert to dict
-        config_yaml = yaml.load(pathlib.Path.read_text(self.path_config_file),  Loader=SafeLoader)
-
-        # Change context
-        config_yaml['context'] = self.context
-
-        # Convert to yaml
-        config = yaml.dump(config_yaml, default_flow_style=False)
-
-        # Save changes
-        file = open(self.path_config_file, 'w', encoding="utf-8")
-        file.writelines(config)
-        file.close()
 
 
     def extract_config_servers(self, config, group=None):

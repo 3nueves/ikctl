@@ -1,8 +1,9 @@
 class Show:
 
-    def __init__(self, kits, servers):
+    def __init__(self, kits, servers, context):
         self.kits = kits
         self.servers = servers
+        self.contexts = context
 
     def show_config(self, conf):            
 
@@ -21,4 +22,10 @@ class Show:
                 for a in value.items():
                     print(a)
 
+        if "context" in conf:
+            print(" ### Contexts ###")
+            print(" ----------------")
+            for ctx in self.contexts['contexts']:
+                print(f' -- {ctx}')
+            print(f"\n - Context use: {self.contexts['context']}")
         print()
