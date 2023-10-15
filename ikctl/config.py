@@ -7,9 +7,6 @@ from create_config_files import CreateFolderAndConfigFile
 class Config():
     """
     Manage path where are kits
-
-    var:
-        change_context => Value to change context
     """
 
     def __init__(self):
@@ -22,7 +19,7 @@ class Config():
         self.context = self.config['context']
 
     def __create_folder_and_config_file(self):
-        # Create Config file if not exist
+        """ Create Config file if not exist """
 
         self.create_config_file.create_folder()
         self.create_config_file.create_config_file()
