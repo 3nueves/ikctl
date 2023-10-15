@@ -1,7 +1,0 @@
-servers:
-  - name: manager-02
-    user: kub
-    hosts: [10.0.0.67]
-    port: 22
-    password: $PASSWORD
-    pkey: "/home/dml/.ssh/id_rsa"
