@@ -17,7 +17,7 @@ class Config():
         self.context = self.config['context']
 
     def __create_folder_and_config_file(self):
-        """ Create Config file if not exist """
+        """ Create Config file and folder """
 
         self.create_config_file.create_folder()
         self.create_config_file.create_config_file()
@@ -27,8 +27,9 @@ class Config():
 
         try:
             self.config = EnvYAML(self.path_config_file, strict=False)
-        except FileNotFoundError:
-            print("\nConfig file not found or not configured or env not defined\n")
+
+        except ValueError as error:
+            print(f'\n--- {error} ---\n')
             sys.exit()
 
         return self.config
@@ -39,8 +40,9 @@ class Config():
         kits = (self.config['contexts'][self.context]['path_kits'])
         try:
             return EnvYAML(kits + "/ikctl.yaml")
-        except:
-            print("\nConfig file not found or not configured or env not defined\n")
+
+        except ValueError as error:
+            print(f'\n--- {error} ---\n')
             sys.exit()
         
 
@@ -50,8 +52,9 @@ class Config():
         servers = (self.config['contexts'][self.context]['path_servers'])
         try:
             return EnvYAML(servers + "/config.yaml")
-        except:
-            print("\nConfig file not found or not configured or env not defined\n")
+
+        except ValueError as error:
+            print(f'\n--- {error} ---\n')
             sys.exit()
 
 
