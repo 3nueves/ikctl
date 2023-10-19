@@ -2,7 +2,7 @@ import pathlib
 import os
 import sys
 from envyaml import EnvYAML
-from create_config_files import CreateFolderAndConfigFile
+from .create_config_files import CreateFolderAndConfigFile
 
 class Config():
     """ Manage path kits """
