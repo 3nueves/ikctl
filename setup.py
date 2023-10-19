@@ -3,18 +3,20 @@ from setuptools import setup, find_packages
 
 setup(
     name='ikctl',
-    version='1.0.0',
-    description="Installing kits in remote servers",
+    version='0.4.0',
+    description="kit installer on remote servers",
     author="David Moya López",
-    package_dir={"": "ikctl"},
-    # packages=find_packages(),
+    author_email="3nueves@gmail.com",
+    license="Apache v2.0",
+    packages=find_packages(include=['ikctl','ikctl.*']),
     install_requires=[
         'paramiko',
-        'pyaml'
+        'pyaml',
+        'EnvYAML'
     ],
     entry_points={
         'console_scripts': [
-            'ikctl = main:create_parser',
-        ],
-    },
+            'ikctl=ikctl.main:create_parser'
+        ]
+    }
 )

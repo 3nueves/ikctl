@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-from pipeline import Pipeline
+from .pipeline import Pipeline
 
 def create_parser():
     parser = argparse.ArgumentParser(description="tool for install software in remote servers", prog="ikctl")

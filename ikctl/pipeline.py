@@ -1,13 +1,13 @@
 import logging
 import sys
 from os import path
-from logs import Log
-from view import Show
-from sftp import Sftp
-from execute import Exec
-from config import Config
-from connect import Connection
-from context import Context
+from .logs import Log
+from .view import Show
+from .sftp import Sftp
+from .execute import Exec
+from .config import Config
+from .connect import Connection
+from .context import Context
 
 
 class Pipeline:
