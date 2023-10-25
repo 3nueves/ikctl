@@ -70,7 +70,7 @@ class Pipeline:
                 self.logger.info(f'HOST: {conn.host}\n')
 
                 for local_kit in kits:
-                    # Ruta destino donde subiremos el kits en el servidor remoto
+                    # Ruta destino donde subiremos los kits en el servidor remoto
                     remote_kit = ".ikctl/" + path.basename(local_kit)
                     self.logger.info(f'UPLOAD: {remote_kit}\n')
                     self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
