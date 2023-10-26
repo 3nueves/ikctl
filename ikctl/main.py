@@ -8,7 +8,7 @@ def create_parser():
     parser.add_argument("-l", "--list", choices=["kits", "servers", "context"], help="option to list kits, servers or context")
     parser.add_argument("-i", "--install", help="Select kit to use")
     parser.add_argument("-n", "--name", help="Name of the groups servers")
-    parser.add_argument("-p", "--parameter", help="Add parameters")
+    parser.add_argument("-p", "--parameter", nargs = '*', help="Add parameters")
     parser.add_argument("-s", "--sudo", choices=["sudo"], help="exec from sudo")
     parser.add_argument("-c", "--context", help="Select context")
     

@@ -1,4 +1,5 @@
 import logging
+import sys
 import paramiko
 from getpass import getpass
 
@@ -51,8 +52,9 @@ class Connection:
 
 
         except paramiko.SSHException as e:
-            self.logger.error(e)
-            # print(e)
+            print()
+            self.logger.error(f'{e}\n')
+            sys.exit()
     
 
     def close_conn(self):
