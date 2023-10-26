@@ -57,7 +57,7 @@ class Pipeline:
                 sys.exit()
                 
 
-            # Upload scripts
+            # Upload scripts to remote servers
             for host in hosts:
                 conn = Connection(user, port, host, pkey, password)
                 folder = self.sftp.list_dir(conn.connection_sftp, conn.user)
