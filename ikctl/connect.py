@@ -37,15 +37,11 @@ class Connection:
                 private_key = paramiko.RSAKey.from_private_key_file(self.pkey)
 
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
+            
             if not self.pkey:
-                client.connect(
-                    self.host, port=self.port, username=self.user, password=self.password, timeout=500
-                )
+                client.connect(self.host, port=self.port, username=self.user, password=self.password, timeout=500)
             else:
-                client.connect(
-                    self.host, port=self.port, username=self.user, pkey=private_key, timeout=500
-                )
+                client.connect(self.host, port=self.port, username=self.user, pkey=private_key, timeout=500)
 
             self.connection = client
             self.connection_sftp = client.open_sftp()
