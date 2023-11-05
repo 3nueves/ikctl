@@ -78,9 +78,9 @@ class Config():
                 pkey     = m.get("pkey", None)
                 for host in m["hosts"]:
                     hosts.append(host)
-            else:
-                print("Host not found")
-                sys.exit()
+        if not hosts:
+            print("Host not found")
+            sys.exit()
                 
         return user, port, pkey, hosts, password
     
