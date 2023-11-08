@@ -69,15 +69,15 @@ class Config():
                 port     = m.get("port", 22)
                 password = m.get("password", "test")
                 pkey     = m.get("pkey", None)
-                for host in m["hosts"]:
-                    hosts.append(host)
+                if m.get("hosts", None):
+                    hosts = [host for host in m['hosts']]
             elif group is None:
                 user     = m.get("user", "kub")
                 port     = m.get("port", 22)
                 password = m.get("password", "test")
                 pkey     = m.get("pkey", None)
-                for host in m["hosts"]:
-                    hosts.append(host)
+                if m.get("hosts", None):
+                    hosts = [host for host in m['hosts']]
         if not hosts:
             print("Host not found")
             sys.exit()
