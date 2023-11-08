@@ -32,6 +32,10 @@ class Config():
             print(f'\n--- {error} ---\n')
             sys.exit()
 
+        except Exception as e:
+            print(e)
+            sys.exit()
+
         return self.config
 
     def load_config_file_kits(self):
@@ -44,6 +48,10 @@ class Config():
         except ValueError as error:
             print(f'\n--- {error} ---\n')
             sys.exit()
+
+        except Exception as e:
+            print(e)
+            sys.exit()
         
 
     def load_config_file_servers(self):
@@ -53,10 +61,13 @@ class Config():
         try:
             return EnvYAML(servers + "/config.yaml")
 
-        except ValueError as error:
+        except (ValueError) as error:
             print(f'\n--- {error} ---\n')
             sys.exit()
-
+            
+        except Exception as e:
+            print(e)
+            sys.exit()
 
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
