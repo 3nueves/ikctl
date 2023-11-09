@@ -33,7 +33,7 @@ class Config():
             sys.exit()
 
         except Exception as e:
-            print(e)
+            print(f"\nERROR IN FILE: {self.path_config_file}\n\n",e)
             sys.exit()
 
         return self.config
@@ -43,14 +43,19 @@ class Config():
 
         kits = (self.config['contexts'][self.context]['path_kits'])
         try:
-            return EnvYAML(kits + "/ikctl.yaml")
+            kit = EnvYAML(kits + "/ikctl.yaml")
+            if kit.get("kits"):
+                return kit
+            else:
+                print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
+                sys.exit()
 
-        except ValueError as error:
+        except (ValueError, KeyError) as error:
             print(f'\n--- {error} ---\n')
             sys.exit()
 
         except Exception as e:
-            print(e)
+            print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n\n",e)
             sys.exit()
         
 
@@ -64,9 +69,9 @@ class Config():
         except (ValueError) as error:
             print(f'\n--- {error} ---\n')
             sys.exit()
-            
+
         except Exception as e:
-            print(e)
+            print(f"\nERROR IN FILE: {servers}/config.yaml\n\n",e)
             sys.exit()
 
     def extract_config_servers(self, config, group=None):
