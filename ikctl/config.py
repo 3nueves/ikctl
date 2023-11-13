@@ -32,6 +32,10 @@ class Config():
             print(f'\n--- {error} ---\n')
             sys.exit()
 
+        except Exception as e:
+            print(f"\nERROR IN FILE: {self.path_config_file}\n\n",e)
+            sys.exit()
+
         return self.config
 
     def load_config_file_kits(self):
@@ -39,10 +43,19 @@ class Config():
 
         kits = (self.config['contexts'][self.context]['path_kits'])
         try:
-            return EnvYAML(kits + "/ikctl.yaml")
+            kit = EnvYAML(kits + "/ikctl.yaml")
+            if kit.get("kits"):
+                return kit
+            else:
+                print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
+                sys.exit()
 
-        except ValueError as error:
+        except (ValueError, KeyError) as error:
             print(f'\n--- {error} ---\n')
+            sys.exit()
+
+        except Exception as e:
+            print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n\n",e)
             sys.exit()
         
 
@@ -53,10 +66,13 @@ class Config():
         try:
             return EnvYAML(servers + "/config.yaml")
 
-        except ValueError as error:
+        except (ValueError) as error:
             print(f'\n--- {error} ---\n')
             sys.exit()
 
+        except Exception as e:
+            print(f"\nERROR IN FILE: {servers}/config.yaml\n\n",e)
+            sys.exit()
 
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
@@ -69,15 +85,15 @@ class Config():
                 port     = m.get("port", 22)
                 password = m.get("password", "test")
                 pkey     = m.get("pkey", None)
-                for host in m["hosts"]:
-                    hosts.append(host)
+                if m.get("hosts", None):
+                    hosts = [host for host in m['hosts']]
             elif group is None:
                 user     = m.get("user", "kub")
                 port     = m.get("port", 22)
                 password = m.get("password", "test")
                 pkey     = m.get("pkey", None)
-                for host in m["hosts"]:
-                    hosts.append(host)
+                if m.get("hosts", None):
+                    hosts = [host for host in m['hosts']]
         if not hosts:
             print("Host not found")
             sys.exit()
