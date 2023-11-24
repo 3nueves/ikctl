@@ -47,7 +47,8 @@ class Connection:
             self.connection_sftp = client.open_sftp()
 
 
-        except paramiko.SSHException as e:
+        except (paramiko.SSHException, FileNotFoundError) as e:
+        # except FileNotFoundError as e:
             print()
             self.logger.error(f'{e}\n')
             sys.exit()

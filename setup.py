@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='ikctl',
-    version='0.6.0',
+    version='0.7.1',
     description="kit installer on remote servers",
     author="David Moya López",
     author_email="3nueves@gmail.com",
