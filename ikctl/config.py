@@ -1,3 +1,4 @@
+""" Module to load configuration """
 import pathlib
 import os
 import sys
@@ -16,15 +17,15 @@ class Config():
         self.__load_config_file_where_are_kits()
         self.context = self.config['context']
 
+
     def __create_folder_and_config_file(self):
         """ Create Config file and folder """
-
         self.create_config_file.create_folder()
         self.create_config_file.create_config_file()
 
+
     def __load_config_file_where_are_kits(self):
         """ Load Config ikctl """
-
         try:
             self.config = EnvYAML(self.path_config_file, strict=False)
 
@@ -38,9 +39,9 @@ class Config():
 
         return self.config
 
+
     def load_config_file_kits(self):
         """ Load kits """
-
         kits = (self.config['contexts'][self.context]['path_kits'])
         try:
             kit = EnvYAML(kits + "/ikctl.yaml")
@@ -61,7 +62,6 @@ class Config():
 
     def load_config_file_servers(self):
         """ Load Hosts """
-
         servers = (self.config['contexts'][self.context]['path_servers'])
         try:
             return EnvYAML(servers + "/config.yaml")
@@ -74,9 +74,9 @@ class Config():
             print(f"\nERROR IN FILE: {servers}/config.yaml\n\n",e)
             sys.exit()
 
+
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
-
         hosts = []
 
         for m in config["servers"]:
@@ -100,9 +100,9 @@ class Config():
                 
         return user, port, pkey, hosts, password
     
+
     def extrac_config_kits(self, config, name_kit):
         """ Extract values from config file """
-
         kits = []
 
         # Route where the kits are located
