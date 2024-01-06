@@ -33,7 +33,7 @@ class Config():
             sys.exit()
 
         except Exception as e:
-            print(f"\nERROR IN FILE: {self.path_config_file}\n\n",e)
+            print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
             sys.exit()
 
         return self.config
@@ -105,10 +105,10 @@ class Config():
 
         kits = []
 
-        # Ruta donde se encuentran los kits
+        # Route where the kits are located
         path_kits = self.config['contexts'][self.context]['path_kits']
 
-        # Recorremos los kits que hemos extraido de arriba
+        # We tour the cars that we have extracted from above
         for kit in config['kits']:
 
             # Buscamos la coincidencia con el kit que deseamos

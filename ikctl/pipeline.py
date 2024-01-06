@@ -1,6 +1,9 @@
+""" Module to launch one pipeline to install kits to the remote servers  """
 import logging
 import sys
+
 from os import path
+
 from .logs import Log
 from .view import Show
 from .sftp import Sftp
@@ -9,9 +12,8 @@ from .config import Config
 from .connect import Connection
 from .context import Context
 
-
 class Pipeline:
-
+    """ Class where we will initiation the process to install kits on remote servers """
 
     def __init__(self):
 
@@ -32,47 +34,46 @@ class Pipeline:
         self.view = Show(self.config_kits, self.config_servers, self.config_contexts)
 
     def init(self, options):
+        """ Function to initiation pipeline """
 
         self.logger = logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-        # load server
+        # Load server
         user, port, pkey, hosts, password = self.data.extract_config_servers(self.config_servers, options.name)
 
-        # manage context
+        # Manage context
         if options.context:
             self.context.change_context(options.context)
                 
-        # show configuration
+        # Show configuration
         if options.list:
             self.view.show_config(options.list)
 
-        # install kit in servers
+        # Install kits in servers
         if options.install:
 
-        # load kit
+            # Load kit
             kits = self.data.extrac_config_kits(self.config_kits, options.install)
             if kits is None:
                 print("Kit not found")
                 sys.exit()
-                
 
-            # Upload scripts to remote servers
             for host in hosts:
                 conn = Connection(user, port, host, pkey, password)
                 folder = self.sftp.list_dir(conn.connection_sftp, conn.user)
                 if ".ikctl" not in folder:
-                    self.logger.info(f"Create folder ikctl")
+                    self.logger.info("Create folder ikctl")
                     self.sftp.create_folder(conn.connection_sftp)
 
                 print("###  Starting ikctl ###\n")
 
-                self.logger.info(f'HOST: {conn.host}\n')
+                self.logger.info('HOST: %s\n', conn.host)
 
                 for local_kit in kits:
-                    # Ruta destino donde subiremos los kits en el servidor remoto
+                    # Destination route where we will upload the kits to the remote server
                     remote_kit = ".ikctl/" + path.basename(local_kit)
-                    self.logger.info(f'UPLOAD: {remote_kit}\n')
+                    self.logger.info('UPLOAD: %s\n', remote_kit)
                     self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
                     self.kit_not_match = False
                         

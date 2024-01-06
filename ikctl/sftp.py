@@ -1,4 +1,5 @@
 class Sftp:
+    """ Class to management files and folders on remote servers """
 
     def __init__(self)-> None:
         pass
