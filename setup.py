@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='ikctl',
     version='1.0.1',
-    description="kit installer on remote servers",
+    description="App to installer packages on remote servers",
     author="David Moya López",
     author_email="3nueves@gmail.com",
     license="Apache v2.0",
