@@ -18,7 +18,6 @@ class CreateFolderAndConfigFile():
         },
         'context' : 'local'
     }
-    
 
     def __init__(self):
         self.home = pathlib.Path.home()
