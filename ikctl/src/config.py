@@ -56,7 +56,8 @@ class Config():
             sys.exit()
 
         except Exception as e:
-            print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n\n",e)
+            print()
+            print("[ikctl - kits configs]",e,"\n")
             sys.exit()
         
 
@@ -71,7 +72,9 @@ class Config():
             sys.exit()
 
         except Exception as e:
-            print(f"\nERROR IN FILE: {servers}/config.yaml\n\n",e)
+            print()
+            print("[ikctl - servers config]",e,"\n")
+            sys.exit()
             sys.exit()
 
 

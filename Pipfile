@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 ikctl = {editable = true, path = "."}
 envyaml = "*"
+paramiko = "*"
+pyaml = "*"
 
 [dev-packages]
 

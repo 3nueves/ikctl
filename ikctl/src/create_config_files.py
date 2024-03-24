@@ -7,14 +7,18 @@ class CreateFolderAndConfigFile():
     Creating Folder and Config File 
     """
 
-    config = { 
+    config = {
         'contexts': {
             'local': {
-                'path_kits':'/', 
-                'path_servers':'/'}, 
+                'path_kits':'', 
+                'path_servers':'', 
+                'path_secrets': ''
+            },
            'remote': {
-                'path_kits':'/', 
-                'path_servers':'/'}
+                'path_kits':'', 
+                'path_servers':'',
+                'path_secrets': ''
+            }
         },
         'context' : 'local'
     }
