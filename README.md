@@ -68,12 +68,14 @@ In this folder we go to add the follow structure
 cat <<EOF | tee ~/kits/show-date/date.sh
 #!/bin/bash
 date
+EOF
 
 # And
 
 cat <<EOF | tee ~/kits/show-date/ikclt.yaml
 kits:
 - date.sh
+EOF
 ```
 
 ### Executing program
