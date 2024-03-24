@@ -88,7 +88,7 @@ kits:
 
 * How to run the program
 ```
-ikctl -i show-date -n nama-server
+ikctl -i show-date -n name-your-server
 ```
 
 ## Version History
