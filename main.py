@@ -1,7 +1,7 @@
 """ Module to load cli """
 import argparse
 
-from .pipeline import Pipeline
+from ikctl.pipeline import Pipeline
 
 def create_parser():
     """ CLI class """

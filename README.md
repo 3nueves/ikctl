@@ -35,7 +35,6 @@ mkdir ~/kits
 Create config file where you add yours servers
 ```
 cat <<EOF | tee ~/kits/config.yaml
-{
 servers:
   - name: your-server-name
     user: your-user
@@ -43,7 +42,6 @@ servers:
     port: 22
     password: $PASSWORD/<your password>
     pkey: "/home/your-home-name/.ssh/id_rsa"
-}
 EOF
 ```
 
@@ -55,10 +53,8 @@ export PASSWORD="your password"
 Create ikctl config file where we will indicate our kits.
 ```
 cat <<EOF | tee ~/kits/ikctl.yaml
-{
 kits:
   - show-date/ikctl.yaml
-}
 EOF
 ```
 
@@ -70,18 +66,14 @@ mkdir ~/kits/show-date
 In this folder we go to add the follow structure
 ```
 cat <<EOF | tee ~/kits/show-date/date.sh
-{
 #!/bin/bash
 date
-}
 
 # And
 
 cat <<EOF | tee ~/kits/show-date/ikclt.yaml
-{
 kits:
 - date.sh
-}
 ```
 
 ### Executing program
