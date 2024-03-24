@@ -78,12 +78,41 @@ kits:
 EOF
 ```
 
-### Executing program
+To finish config we need to add path to config file in "~/.ikctl/config"
+```
 
-* How to run the program
+# editing file config
+
+vim ~/.ikctl/config
+
+context: local
+contexts:
+  local:
+    path_kits: 'path-to-kits/kits'
+    path_secrets: '' <= doesn't work, yet
+    path_servers: 'path-to-kits/kits'
+  remote:
+    path_kits: ''
+    path_secrets: ''
+    path_servers: ''
 ```
-ikctl -i show-date -n name-your-server
+
+### Executing program
+* Get servers
 ```
+ikctl -l servers
+```
+
+* Get kits
+```
+ikctl -l kits
+```
+
+* Run ikctl to execute bash script
+```
+ikctl -i show-date -n your-server-name
+```
+
 
 ## Version History
 
