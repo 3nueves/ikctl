@@ -1,4 +1,4 @@
-## --- This document does not finish ---
+## --- This document is not finished ---
 
 # ikctl (install kit control)
 
