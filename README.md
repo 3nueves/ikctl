@@ -47,7 +47,7 @@ servers:
 EOF
 ```
 
-You will need add env variable to password:
+You will need to add a variable called password with the server access password:
 ```
 export PASSWORD="your password"
 ```
