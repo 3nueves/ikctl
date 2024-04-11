@@ -101,7 +101,7 @@ class Config():
             print("Host not found")
             sys.exit()
                 
-        return group, user, port, pkey, hosts, password
+        return user, port, pkey, hosts, password
     
 
     def extrac_config_kits(self, config, name_kit):

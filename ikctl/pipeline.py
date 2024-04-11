@@ -59,28 +59,28 @@ class Pipeline:
                 print("Kit not found")
                 sys.exit()
 
-        for host in hosts:
-            conn = Connection(user, port, host, pkey, password)
-            folder = self.sftp.list_dir(conn.connection_sftp, conn.user)
-            if ".ikctl" not in folder:
-                self.logger.info("Create folder ikctl")
-                self.sftp.create_folder(conn.connection_sftp)
+            for host in hosts:
+                conn = Connection(user, port, host, pkey, password)
+                folder = self.sftp.list_dir(conn.connection_sftp, conn.user)
+                if ".ikctl" not in folder:
+                    self.logger.info("Create folder ikctl")
+                    self.sftp.create_folder(conn.connection_sftp)
 
-            print("###  Starting ikctl ###\n")
+                print("###  Starting ikctl ###\n")
 
-            self.logger.info('HOST: %s\n', conn.host)
+                self.logger.info('HOST: %s\n', conn.host)
 
-            for local_kit in kits:
-                # Destination route where we will upload the kits to the remote server
-                remote_kit = ".ikctl/" + path.basename(local_kit)
-                self.logger.info('UPLOAD: %s\n', remote_kit)
-                self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
-                self.kit_not_match = False
-                    
-            if ".sh" in remote_kit:
-                check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
-                self.log.stdout(self.logger, log, err, check, level="DEBUG")
+                for local_kit in kits:
+                    # Destination route where we will upload the kits to the remote server
+                    remote_kit = ".ikctl/" + path.basename(local_kit)
+                    self.logger.info('UPLOAD: %s\n', remote_kit)
+                    self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
+                    self.kit_not_match = False
+                        
+                if ".sh" in remote_kit:
+                    check, log, err = self.exe.run(conn, options, remote_kit, "script", password)
+                    self.log.stdout(self.logger, log, err, check, level="DEBUG")
 
-            self.logger.info(":END\n")
+                self.logger.info(":END\n")
 
-            conn.close_conn_sftp()
+                conn.close_conn_sftp()
