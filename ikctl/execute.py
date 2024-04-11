@@ -5,7 +5,6 @@ class Exec:
         pass
 
     def run(self, conn, options, commands, mode, password):
-
         if mode == "command":
             command = Commands(commands, conn.connection)
 

@@ -86,7 +86,7 @@ class Config():
             if group == m["name"]:
                 user     = m.get("user", "kub")
                 port     = m.get("port", 22)
-                password = m.get("password", "test")
+                password = m.get("password", "no_pass")
                 pkey     = m.get("pkey", None)
                 if m.get("hosts", None):
                     hosts = [host for host in m['hosts']]
@@ -101,7 +101,7 @@ class Config():
             print("Host not found")
             sys.exit()
                 
-        return user, port, pkey, hosts, password
+        return group, user, port, pkey, hosts, password
     
 
     def extrac_config_kits(self, config, name_kit):

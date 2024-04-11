@@ -29,8 +29,8 @@ class Commands:
             stdin, stdout, stderr = self.client.exec_command(self.command)
             for l in stdout :
                 print(f"{l.strip()}")
-            for l in stderr:
-                print(f"stderr: {l.strip()}")
+            # for l in stderr:
+            #     print(f"stderr: {l.strip()}")
             self.check = stdout.channel.recv_exit_status()
 
             return self.check, None, None
