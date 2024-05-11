@@ -34,7 +34,8 @@ class Config():
             sys.exit()
 
         except Exception as e:
-            print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
+            # print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
+            print("\n",e)
             sys.exit()
 
         return self.config
@@ -42,7 +43,14 @@ class Config():
 
     def load_config_file_kits(self):
         """ Load kits """
-        kits = (self.config['contexts'][self.context]['path_kits'])
+
+        try:
+            kits = (self.config['contexts'][self.context]['path_kits'])
+
+        except (ValueError, KeyError) as error:
+            print(f'\n keyError: {error} has a mistake\n')
+            sys.exit()
+
         try:
             kit = EnvYAML(kits + "/ikctl.yaml")
             if kit.get("kits"):
@@ -51,8 +59,8 @@ class Config():
                 print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
                 sys.exit()
 
-        except (ValueError, KeyError) as error:
-            print(f'\n--- {error} ---\n')
+        except (ValueError, KeyError):
+            print(f'\n KeyError: {error} there is a mistake\n')
             sys.exit()
 
         except Exception as e:
@@ -63,7 +71,14 @@ class Config():
 
     def load_config_file_servers(self):
         """ Load Hosts """
-        servers = (self.config['contexts'][self.context]['path_servers'])
+
+        try:
+            servers = (self.config['contexts'][self.context]['path_servers'])
+        
+        except (ValueError, KeyError) as error:
+            print(f'\n keyError: {error} has a mistake\n')
+            sys.exit()
+
         try:
             return EnvYAML(servers + "/config.yaml")
 
