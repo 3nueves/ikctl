@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name='ikctl',
-    version='0.2.11',
+    version='0.2.12',
     description="App to installer packages on remote servers",
     long_description=long_description,
     long_description_content_type="text/markdown",
