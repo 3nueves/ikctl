@@ -12,7 +12,7 @@ This app use ssh protocol to connect on remote servers and running bash script t
 
 ### Dependencies
 
-* Python 3.10
+* Python 3.12
 * paramiko
 * pyaml
 * envyaml

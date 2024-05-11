@@ -9,6 +9,7 @@ envyaml = "*"
 paramiko = "*"
 pyaml = "*"
 setuptools = "*"
+twine = "*"
 
 [dev-packages]
 
