@@ -25,7 +25,7 @@ class Commands:
         """ execute script bash in remote server """
 
         try:
-            self.logger.info(re.sub("echo (.*) \|","echo ************ |",f'EXEC: {self.command}\n'))
+            self.logger.info(re.sub("echo (.*) |","echo ************ |",f'EXEC: {self.command}\n'))
             stdin, stdout, stderr = self.client.exec_command(self.command)
             for l in stdout :
                 print(f"{l.strip()}")
