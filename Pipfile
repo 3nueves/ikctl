@@ -8,6 +8,7 @@ ikctl = {editable = true, path = "."}
 envyaml = "*"
 paramiko = "*"
 pyaml = "*"
+setuptools = "*"
 
 [dev-packages]
 
