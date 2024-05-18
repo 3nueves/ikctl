@@ -17,6 +17,7 @@ class Pipeline:
 
     def __init__(self):
 
+        self.version = Config().version
         self.path = []
         self.files = []
         self.log = Log()
@@ -49,7 +50,7 @@ class Pipeline:
         # Show configuration
         if options.list:
             self.view.show_config(options.list)
-
+        
         # Install kits in servers
         if options.install:
 
