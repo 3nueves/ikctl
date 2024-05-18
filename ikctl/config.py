@@ -5,11 +5,14 @@ import sys
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
+__version__ = "v0.2.14"
+
 class Config():
     """ Manage path kits """
 
     def __init__(self):
         self.config = ""
+        self.version = __version__
         self.home = pathlib.Path.home()
         self.path_config_file = self.home.joinpath('.ikctl/config')
         self.create_config_file = CreateFolderAndConfigFile()
