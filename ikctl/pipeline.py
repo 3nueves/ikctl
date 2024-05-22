@@ -14,25 +14,20 @@ class Pipeline:
 
     def __init__(self, options):
 
-        self.version = Config().version
-        self.path = []
-        self.files = []
         self.options = options
         self.log = Log()
         self.exe = Exec()
         self.sftp = Sftp()
         self.data = Config()
-        self.connection = []
+        self.version = Config().version
         self.logger = logging
         self.file = "ikctl.yaml"
-        self.kit_not_match = True
         self.context = Context()
         self.config_kits = self.data.load_config_file_kits()
         self.config_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
         self.config_contexts = self.context.config
         self.view = Show(self.config_kits, self.config_servers, self.config_contexts)
-        ### To Do load class 
         self.servers = self.data.extract_config_servers(self.config_servers, self.options.name)
         self.kits = self.data.extrac_config_kits(self.config_kits, self.options.install)
         self.run_remote_kits = RunRemoteKits(self.servers, self.kits, self.sftp, self.exe, self.log, self.options)
@@ -43,9 +38,6 @@ class Pipeline:
 
         self.logger = logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-
-        # Load server
-        # servers = self.data.extract_config_servers(self.config_servers, self.options.name)
 
         # Manage context
         if self.options.context:
