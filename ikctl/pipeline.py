@@ -1,8 +1,5 @@
 """ Module to launch one pipeline to install kits to the remote servers  """
 import logging
-import sys
-
-from os import path
 
 from .logs import Log
 from .view import Show
