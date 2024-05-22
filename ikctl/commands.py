@@ -37,3 +37,6 @@ class Commands:
 
         except paramiko.SSHException as e:
             self.logger.error(e)
+
+    def run_command(self):
+        print("install local")

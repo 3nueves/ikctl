@@ -12,15 +12,17 @@ class CreateFolderAndConfigFile():
             'local': {
                 'path_kits':'$HOME/kits', 
                 'path_servers':'$HOME/kits', 
-                'path_secrets': ''
+                'path_secrets': '',
+                'mode': 'local'
             },
            'remote': {
                 'path_kits':'', 
                 'path_servers':'',
-                'path_secrets': ''
+                'path_secrets': '',
+                'mode': 'remote'
             }
         },
-        'context' : 'local'
+        'context' : 'local',
     }
 
     config_servers = {
