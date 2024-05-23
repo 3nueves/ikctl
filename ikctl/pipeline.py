@@ -7,6 +7,7 @@ from .execute import Exec
 from .config import Config
 from .context import Context
 from .remote.sftp import Sftp
+from .commands import Commands
 from .remote.run_kits import RunRemoteKits
 
 class Pipeline:
@@ -16,13 +17,13 @@ class Pipeline:
 
         self.options = options
         self.log = Log()
-        self.exe = Exec()
         self.sftp = Sftp()
         self.data = Config()
-        self.version = Config().version
         self.logger = logging
         self.file = "ikctl.yaml"
         self.context = Context()
+        self.exe = Exec(Commands)
+        self.version = Config().version
         self.config_kits = self.data.load_config_file_kits()
         self.config_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
