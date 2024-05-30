@@ -8,7 +8,7 @@ from .config import Config
 from .context import Context
 from .remote.sftp import Sftp
 from .commands import Commands
-from .remote.run_kits import RunRemoteKits
+from .remote.remote_kits import RunRemoteKits
 
 class Pipeline:
     """ Class where we will initiation the process to install kits on remote servers """
