@@ -27,11 +27,20 @@ class Commands:
         try:
             self.logger.info(re.sub("echo (.*) \\|","echo ************ |",f'EXEC: {self.command}\n'))
             stdin, stdout, stderr = self.client.exec_command(self.command)
-            for l in stdout :
-                print(f"{l.strip()}")
-            for l in stderr:
-                print(f"stderr: {l.strip()}")
-            self.check = stdout.channel.recv_exit_status()
+
+            stdout_lines = stdout.readlines()
+            response = ''.join(stdout_lines)
+            print(response)
+
+            stderr_lines = stderr.readlines()
+            errors = ''.join(stderr_lines)
+
+            if errors:
+                print("ERRORS\n")
+                print(errors)
+                print("END ERRORS")
+            else:
+                self.check = stdout.channel.recv_exit_status()
 
             return self.check, None, None
 
