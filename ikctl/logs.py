@@ -1,8 +1,10 @@
 class Log:
+    """ Class to show the stdout  """
     def __init__(self) -> None:
         pass
 
-    def stdout(sefl, logger, log, err, check, level):
+    def stdout(self, logger, log, err, check, level):
+        """ Method to get events """
         print()
         if check != 0:
             print(f'\x1b[31;1mTask not completed::NOK')

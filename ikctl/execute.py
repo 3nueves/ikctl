@@ -1,10 +1,12 @@
 # from .commands import Commands
 
 class Exec:
+    """ class to run the kits """
     def __init__(self, launch_remote_commands: object) -> None:
         self.commands = launch_remote_commands
 
     def run(self, conn, options, commands, mode, password):
+        """ run the kits """
         if mode == "command":
             command = self.commands(commands, conn.connection)
 
