@@ -9,6 +9,7 @@ from .context import Context
 from .remote.sftp import Sftp
 from .commands import Commands
 from .remote.remote_kits import RunRemoteKits
+from .local.local_kits import RunLocalKits
 
 class Pipeline:
     """ Class where we will initiation the process to install kits on remote servers """
@@ -28,10 +29,11 @@ class Pipeline:
         self.config_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
         self.config_contexts = self.context.config
-        self.view = Show(self.config_kits, self.config_servers, self.config_contexts)
+        self.view = Show(self.config_kits, self.config_servers, self.config_contexts, self.config_mode)
         self.servers = self.data.extract_config_servers(self.config_servers, self.options.name)
         self.kits = self.data.extrac_config_kits(self.config_kits, self.options.install)
         self.run_remote_kits = RunRemoteKits(self.servers, self.kits, self.sftp, self.exe, self.log, self.options)
+        self.run_local_kits = RunLocalKits(self.servers, self.kits, self.log, self.options)
         self.init()
 
     def init(self):
@@ -53,7 +55,7 @@ class Pipeline:
 
             # Run kits in local machine
             if self.config_mode == 'local':
-                print("local")
+                self.run_local_kits.run_kits()
 
             # Run kits in remote servers
             if self.config_mode == 'remote':
