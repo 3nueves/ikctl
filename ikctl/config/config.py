@@ -120,7 +120,7 @@ class Config():
             elif group is None:
                 user     = m.get("user", "kub")
                 port     = m.get("port", 22)
-                password = m.get("password", "test")
+                password = m.get("password", "no_pass")
                 pkey     = m.get("pkey", None)
                 if m.get("hosts", None):
                     hosts = [host for host in m['hosts']]

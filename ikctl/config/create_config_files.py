@@ -16,8 +16,8 @@ class CreateFolderAndConfigFile():
                 'mode': 'local'
             },
            'remote': {
-                'path_kits':'', 
-                'path_servers':'',
+                'path_kits':'$HOME/kits', 
+                'path_servers':'$HOME/kits', 
                 'path_secrets': '',
                 'mode': 'remote'
             }
