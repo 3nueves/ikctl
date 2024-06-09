@@ -4,7 +4,7 @@ import logging
 from .logs import Log
 from .view import Show
 from .execute import Exec
-from .config import Config
+from .config.config import Config
 from .context import Context
 from .remote.sftp import Sftp
 from .commands import Commands

@@ -5,7 +5,7 @@ import sys
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.2.14"
+__version__ = "v0.2.15"
 
 class Config():
     """ Manage path kits """

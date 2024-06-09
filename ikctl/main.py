@@ -2,7 +2,7 @@
 import argparse
 
 from .pipeline import Pipeline
-from .config import __version__
+from .config.config import __version__
 
 def create_parser():
     """ CLI class """

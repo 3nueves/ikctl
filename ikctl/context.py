@@ -3,7 +3,7 @@ import sys
 import yaml
 from yaml.loader import SafeLoader
 
-from .config import Config
+from .config.config import Config
 
 class Context():
     """ Manage Contexts """

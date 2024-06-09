@@ -2,7 +2,7 @@
 import argparse
 
 from ikctl.pipeline import Pipeline
-from ikctl.config import __version__
+from ikctl.config.config import __version__
 
 def create_parser():
     """ CLI class """
