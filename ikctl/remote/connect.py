@@ -1,3 +1,6 @@
+"""
+Module to make connection ssh to remote servers 
+"""
 import logging
 import sys
 import paramiko

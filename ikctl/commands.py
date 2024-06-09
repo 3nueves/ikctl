@@ -25,15 +25,27 @@ class Commands:
         """ execute script bash in remote server """
 
         try:
-            self.logger.info(re.sub("echo (.*) |","echo ************ |",f'EXEC: {self.command}\n'))
+            self.logger.info(re.sub("echo (.*) \\|","echo ************ |",f'EXEC: {self.command}\n'))
             stdin, stdout, stderr = self.client.exec_command(self.command)
-            for l in stdout :
-                print(f"{l.strip()}")
-            # for l in stderr:
-            #     print(f"stderr: {l.strip()}")
-            self.check = stdout.channel.recv_exit_status()
+
+            stdout_lines = stdout.readlines()
+            response = ''.join(stdout_lines)
+            print(f'\033[1;32m{response}\x1b[0m')
+
+            stderr_lines = stderr.readlines()
+            errors = ''.join(stderr_lines)
+
+            if errors:
+                print("\x1b[31;1mERRORS\n")
+                print(f"{errors}")
+                print("END ERRORS\x1b[0m")
+            else:
+                self.check = stdout.channel.recv_exit_status()
 
             return self.check, None, None
 
         except paramiko.SSHException as e:
             self.logger.error(e)
+
+    def run_command(self):
+        print("install local")

@@ -12,24 +12,26 @@ class CreateFolderAndConfigFile():
             'local': {
                 'path_kits':'$HOME/kits', 
                 'path_servers':'$HOME/kits', 
-                'path_secrets': ''
+                'path_secrets': '',
+                'mode': 'local'
             },
            'remote': {
                 'path_kits':'', 
                 'path_servers':'',
-                'path_secrets': ''
+                'path_secrets': '',
+                'mode': 'remote'
             }
         },
-        'context' : 'local'
+        'context' : 'local',
     }
-
+    
     config_servers = {
         'servers': [
             {
             'name':'mariadb',
             'user': 'root',
             'hosts': ['192.168.1.55', '10.0.0.234'],
-            'port':'3306',
+            'port':'22',
             'password':'$PASSWORD',
             'pkey': "/home/dml/.ssh/id_rsa_kubernetes-unelink"
             }

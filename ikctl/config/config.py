@@ -5,7 +5,7 @@ import sys
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.2.14"
+__version__ = "v0.2.15"
 
 class Config():
     """ Manage path kits """
@@ -43,6 +43,15 @@ class Config():
 
         return self.config
 
+    def load_config_file_mode(self):
+        """ Load Mode """
+
+        try:
+            return (self.config['contexts'][self.context]['mode'])
+
+        except (ValueError, KeyError) as error:
+            print(f'\n keyError: {error} has a mistake\n')
+            sys.exit()
 
     def load_config_file_kits(self):
         """ Load kits """
@@ -118,9 +127,17 @@ class Config():
         if not hosts:
             print("Host not found")
             sys.exit()
-                
-        return user, port, pkey, hosts, password
-    
+
+        data = {
+            'user': user,
+            'port': port,
+            'pkey': pkey,
+            'hosts': hosts,
+            'password': password
+        }
+
+        return data
+        # return user, port, pkey, hosts, password
 
     def extrac_config_kits(self, config, name_kit):
         """ Extract values from config file """
@@ -141,4 +158,9 @@ class Config():
                 object_with_path = EnvYAML(path_kits + "/" + kit)
                 for k in object_with_path['kits']:
                     kits.append(path_until_folder + "/" + k)
-                return kits
+
+                if kits is None:
+                    print("Kit not found")
+                    sys.exit()
+                else:
+                    return kits
