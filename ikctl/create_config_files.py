@@ -24,14 +24,14 @@ class CreateFolderAndConfigFile():
         },
         'context' : 'local',
     }
-
+    
     config_servers = {
         'servers': [
             {
             'name':'mariadb',
             'user': 'root',
             'hosts': ['192.168.1.55', '10.0.0.234'],
-            'port':'3306',
+            'port':'22',
             'password':'$PASSWORD',
             'pkey': "/home/dml/.ssh/id_rsa_kubernetes-unelink"
             }

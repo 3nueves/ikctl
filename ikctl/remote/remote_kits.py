@@ -52,7 +52,7 @@ class RunRemoteKits:
                 self.kit_not_match = False
                     
             if ".sh" in remote_kit:
-                check, log, err = self.exe.run(conn, self.options, remote_kit, "script", self.servers['password'])
+                check, log, err = self.exe.run_remote(conn, self.options, remote_kit, "script", self.servers['password'])
                 self.log.stdout(self.logger, log, err, check, level="DEBUG")
 
             self.logger.info(":END\n")
