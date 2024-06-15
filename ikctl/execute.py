@@ -1,5 +1,5 @@
 # from .commands import Commands
-
+import os
 class Exec:
     """ class to run the kits """
     def __init__(self, launch_remote_commands: object) -> None:
@@ -7,6 +7,12 @@ class Exec:
 
     def run_remote(self, conn, options, commands, mode, password):
         """ run the kits """
+
+        path, kit = os.path.split(commands)
+
+        print(path)
+        print(kit)
+
         if mode == "command":
             command = self.commands(commands, conn.connection)
 
@@ -29,10 +35,20 @@ class Exec:
     def run_local(self, options, path_kits, password):
         """ run kits in local machine """
 
+        path, kit = os.path.split(' '.join(path_kits))
+
         if options.sudo and options.parameter:
-            command = f'"echo "+{password}+" | sudo -S bash " + {path_kits} + " " + " ".join({options.parameter})'
-            print(command)
-        # ["python", "-c", "import time; time.sleep(5)"]
+            command = self.commands(f'cd {path}; echo {password} | sudo -S bash {kit} {" ".join(options.parameter)}')
 
+        elif options.sudo and not options.parameter:
+            command = self.commands(f'cd {path}; echo {password} | sudo -S bash {kit}')
 
+        elif not options.sudo and options.parameter:
+            command = self.commands(f'cd {path}; bash {kit} {' '.join(options.parameter)}')
 
+        elif not options.sudo and not options.parameter:
+            command = self.commands(f'cd {path}; bash {kit}')
+       
+        data = command.run_command()
+
+        return data.returncode, data.stdout, data.stderr

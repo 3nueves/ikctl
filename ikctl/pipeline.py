@@ -54,9 +54,9 @@ class Pipeline:
         if self.options.install:
 
             # Run kits in local machine
-            if self.config_mode == 'local':
+            if self.config_mode == 'local' or self.options.mode == 'local':
                 self.run_local_kits.run_kits()
 
             # Run kits in remote servers
-            if self.config_mode == 'remote':
+            elif self.config_mode == 'remote' or self.options.mode == 'remote':
                 self.run_remote_kits.run_kits()

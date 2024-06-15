@@ -53,7 +53,7 @@ class RunRemoteKits:
                     
             if ".sh" in remote_kit:
                 check, log, err = self.exe.run_remote(conn, self.options, remote_kit, "script", self.servers['password'])
-                self.log.stdout(self.logger, log, err, check, level="DEBUG")
+                self.log.stdout(log, err, check)
 
             self.logger.info(":END\n")
 

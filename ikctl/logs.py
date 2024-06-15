@@ -3,12 +3,14 @@ class Log:
     def __init__(self) -> None:
         pass
 
-    def stdout(self, logger, log, err, check, level):
+    def stdout(self, log, err, check):
         """ Method to get events """
         print()
         if check != 0:
-            print('\x1b[31;1mTask not completed::NOK')
+            print(f'\x1b[31;1m{err}')
+            print('\x1b[31;1mTask not completed')
             print("\x1b[0m")
         else:
-            print('\033[1;32mTask completed:OK')
+            print(f'\033[1;32m{log}')
+            print('Task completed')
             print("\x1b[0m")

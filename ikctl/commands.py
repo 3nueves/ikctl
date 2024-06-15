@@ -4,8 +4,10 @@ import re
 
 import paramiko
 
+from subprocess import run, PIPE
+
 class Commands:
-    """ Class to exec kit to remote servers """
+    """ Class to exec kit in remote and locals servers """
 
     log = ""
     check = ""
@@ -13,7 +15,7 @@ class Commands:
     logger = ""
     command = ""
 
-    def __init__(self, command, client):
+    def __init__(self, command, client=None):
 
         self.command = command
         self.client = client
@@ -48,4 +50,7 @@ class Commands:
             self.logger.error(e)
 
     def run_command(self):
-        print("install local")
+        """ run kits in local machine """
+        print("\033[94m")
+        print(f"{re.sub("echo (.*) \\|","echo ************ |",self.command)}")
+        return run([self.command], shell=True, text=True, capture_output=True, timeout=30)
