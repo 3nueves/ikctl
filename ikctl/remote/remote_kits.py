@@ -10,9 +10,11 @@ from .connect import Connection
 class RunRemoteKits:
     """ Class to run kits in remote servers """
 
-    def __init__(self, servers: dict, kits: list, sftp: object, exe: object, log: object, options: object) -> None:
+    def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object) -> None:
         self.servers = servers
+        self.name_kit = name_kit
         self.kits = kits
+        self.pipe = pipe
         self.sftp = sftp
         self.exe = exe
         self.log = log
@@ -31,28 +33,41 @@ class RunRemoteKits:
         if self.kits is None:
             print("Kit not found")
             sys.exit()
-
+        ## Loop servers
         for host in self.servers['hosts']:
             conn = Connection(self.servers['user'], self.servers['port'], host, self.servers['pkey'], self.servers['password'])
-            folder = self.sftp.list_dir(conn.connection_sftp, conn.user)
             # Create .ikctl folder in remote server
+            folder = self.sftp.list_dir(conn.connection_sftp)
             if ".ikctl" not in folder:
                 self.logger.info("Create folder ikctl")
-                self.sftp.create_folder(conn.connection_sftp)
+                self.sftp.create_folder(conn.connection_sftp, ".ikctl")
 
             print("###  Starting ikctl ###\n")
 
             self.logger.info('HOST: %s\n', conn.host)
 
+            # Get name of kit
+            for nm_kit in self.name_kit['kits']:
+                if self.options.install in nm_kit:
+                    folder_kit = self.options.install
+
             for local_kit in self.kits:
                 # Destination route where we will upload the kits to the remote server
-                remote_kit = ".ikctl/" + path.basename(local_kit)
+                # folder_kit = path.basename(local_kit).replace(".sh", "")
+                remote_kit = f".ikctl/{folder_kit}/{path.basename(local_kit)}"
+                folder = self.sftp.list_dir(conn.connection_sftp, ".ikctl/")
+
+                if folder_kit not in folder:
+                    self.sftp.create_folder(conn.connection_sftp, ".ikctl/" + folder_kit)
+
                 self.logger.info('UPLOAD: %s\n', remote_kit)
                 self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
                 self.kit_not_match = False
                     
-            if ".sh" in remote_kit:
-                check, log, err = self.exe.run_remote(conn, self.options, remote_kit, "script", self.servers['password'])
+            for cmd in self.pipe:
+                route = path.dirname(remote_kit)
+                kit = path.basename(cmd)
+                check, log, err = self.exe.run_remote(conn, self.options, route, kit, "script", self.servers['password'])
                 self.log.stdout(log, err, check)
 
             self.logger.info(":END\n")

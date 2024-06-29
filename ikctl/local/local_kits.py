@@ -1,13 +1,13 @@
 """ Module to Run kits in local servers """
 import logging
-import sys
 
 class RunLocalKits:
     """ Class to run kits in locals servers """
 
-    def __init__(self, servers: dict, kits: list, exe: object, log: object, options: object) -> None:
+    def __init__(self, servers: dict, kits: list, pipe: list, exe: object, log: object, options: object) -> None:
         self.servers = servers
         self.kits = kits
+        self.pipe = pipe
         self.exe = exe
         self.log = log
         self.options = options
@@ -18,7 +18,7 @@ class RunLocalKits:
 
         if self.kits is None:
             print("Kit not found")
-            sys.exit()
-
-        check, log, err  = self.exe.run_local(self.options, self.kits, self.servers['password'])
-        self.log.stdout(log, err, check)
+            exit()
+        for cmd in self.pipe:
+            stdout, stderr, returncode = self.exe.run_local(self.options, cmd, self.servers['password'])
+            self.log.stdout(stdout, stderr, returncode)

@@ -32,19 +32,13 @@ class Commands:
 
             stdout_lines = stdout.readlines()
             response = ''.join(stdout_lines)
-            print(f'\033[1;32m{response}\x1b[0m')
 
             stderr_lines = stderr.readlines()
-            errors = ''.join(stderr_lines)
 
-            if errors:
-                print("\x1b[31;1mERRORS\n")
-                print(f"{errors}")
-                print("END ERRORS\x1b[0m")
-            else:
+            if not stderr_lines:
                 self.check = stdout.channel.recv_exit_status()
 
-            return self.check, None, None
+            return self.check, response, stderr_lines
 
         except paramiko.SSHException as e:
             self.logger.error(e)
