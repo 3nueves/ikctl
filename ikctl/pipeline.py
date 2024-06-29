@@ -31,9 +31,10 @@ class Pipeline:
         self.config_contexts = self.context.config
         self.view = Show(self.config_kits, self.config_servers, self.config_contexts, self.config_mode)
         self.servers = self.data.extract_config_servers(self.config_servers, self.options.name)
-        self.kits, self.pipe = self.data.extrac_config_kits(self.config_kits, self.options.install)
-        self.run_remote_kits = RunRemoteKits(self.servers, self.config_kits, self.kits, self.pipe, self.sftp, self.exe, self.log, self.options)
-        self.run_local_kits = RunLocalKits(self.servers, self.kits, self.pipe, self.exe, self.log, self.options)
+        if options.install:
+            self.kits, self.pipe = self.data.extrac_config_kits(self.config_kits, self.options.install)
+            self.run_remote_kits = RunRemoteKits(self.servers, self.config_kits, self.kits, self.pipe, self.sftp, self.exe, self.log, self.options)
+            self.run_local_kits = RunLocalKits(self.servers, self.kits, self.pipe, self.exe, self.log, self.options)
         self.init()
 
     def init(self):
