@@ -4,8 +4,10 @@ import re
 
 import paramiko
 
+from subprocess import run, PIPE
+
 class Commands:
-    """ Class to exec kit to remote servers """
+    """ Class to exec kit in remote and locals servers """
 
     log = ""
     check = ""
@@ -13,7 +15,7 @@ class Commands:
     logger = ""
     command = ""
 
-    def __init__(self, command, client):
+    def __init__(self, command, client=None):
 
         self.command = command
         self.client = client
@@ -30,22 +32,19 @@ class Commands:
 
             stdout_lines = stdout.readlines()
             response = ''.join(stdout_lines)
-            print(f'\033[1;32m{response}\x1b[0m')
 
             stderr_lines = stderr.readlines()
-            errors = ''.join(stderr_lines)
 
-            if errors:
-                print("\x1b[31;1mERRORS\n")
-                print(f"{errors}")
-                print("END ERRORS\x1b[0m")
-            else:
+            if not stderr_lines:
                 self.check = stdout.channel.recv_exit_status()
 
-            return self.check, None, None
+            return self.check, response, stderr_lines
 
         except paramiko.SSHException as e:
             self.logger.error(e)
 
     def run_command(self):
-        print("install local")
+        """ run kits in local machine """
+        print("\033[94m")
+        print(f"{re.sub("echo (.*) \\|","echo ************ |",self.command)}")
+        return run([self.command], shell=True, text=True, capture_output=True, timeout=30)

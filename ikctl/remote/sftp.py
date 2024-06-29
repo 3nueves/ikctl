@@ -8,9 +8,9 @@ class Sftp:
         sftp = client
         sftp.put(scripts, remote_path)
 
-    def create_folder(self, client):
+    def create_folder(self, client, folder):
         sftp = client
-        sftp.mkdir(".ikctl")
+        sftp.mkdir(folder)
 
     def remove_folder(self, client):
         sftp = client
@@ -28,10 +28,10 @@ class Sftp:
         sftp = client
         sftp.chmod(file, 755)
 
-    def list_dir(self, client, user):
+    def list_dir(self, client, folder=None):
         sftp = client
-        if user != "root": 
-            folder = sftp.listdir("/home/"+user)
+        if folder is not None:
+            folder = sftp.listdir(folder)
         else:
-            folder = sftp.listdir("/root")
+            folder = sftp.listdir()
         return folder

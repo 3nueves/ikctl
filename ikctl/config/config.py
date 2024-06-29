@@ -5,7 +5,7 @@ import sys
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.2.16"
+__version__ = "v0.3.0"
 
 class Config():
     """ Manage path kits """
@@ -120,7 +120,7 @@ class Config():
             elif group is None:
                 user     = m.get("user", "kub")
                 port     = m.get("port", 22)
-                password = m.get("password", "test")
+                password = m.get("password", "no_pass")
                 pkey     = m.get("pkey", None)
                 if m.get("hosts", None):
                     hosts = [host for host in m['hosts']]
@@ -141,7 +141,8 @@ class Config():
 
     def extrac_config_kits(self, config, name_kit):
         """ Extract values from config file """
-        kits = []
+        uploads = []
+        pipeline = []
 
         # Route where the kits are located
         path_kits = self.config['contexts'][self.context]['path_kits']
@@ -156,11 +157,17 @@ class Config():
                 # para poder subirlos a los servidores
                 path_until_folder = os.path.dirname(path_kits + "/" + kit)
                 object_with_path = EnvYAML(path_kits + "/" + kit)
-                for k in object_with_path['kits']:
-                    kits.append(path_until_folder + "/" + k)
 
-                if kits is None:
+                # Append all kits that we want upload
+                for upload in object_with_path["kits"]["uploads"]:
+                    uploads.append(path_until_folder + "/" + upload)
+
+                # Append the kits that we are running 
+                for pipe in object_with_path['kits']['pipeline']:
+                    pipeline.append(path_until_folder + "/" + pipe)
+
+                if uploads is None:
                     print("Kit not found")
                     sys.exit()
                 else:
-                    return kits
+                    return uploads, pipeline
