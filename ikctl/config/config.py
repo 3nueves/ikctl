@@ -2,6 +2,7 @@
 import pathlib
 import os
 import sys
+import logging
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
@@ -12,6 +13,9 @@ class Config():
 
     def __init__(self):
         self.config = ""
+        name = __name__.split(".")
+        self.name = name[-1]
+        self.logger = logging.getLogger(self.name)
         self.version = __version__
         self.home = pathlib.Path.home()
         self.path_config_file = self.home.joinpath('.ikctl/config')
@@ -171,3 +175,6 @@ class Config():
                     sys.exit()
                 else:
                     return uploads, pipeline
+        print()
+        print("Kit not found")
+        exit()

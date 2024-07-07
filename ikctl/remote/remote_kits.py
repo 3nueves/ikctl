@@ -11,6 +11,9 @@ class RunRemoteKits:
     """ Class to run kits in remote servers """
 
     def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object) -> None:
+
+        name = __name__.split(".")
+        self.name = name[-1]
         self.servers = servers
         self.name_kit = name_kit
         self.kits = kits
@@ -18,7 +21,7 @@ class RunRemoteKits:
         self.sftp = sftp
         self.exe = exe
         self.log = log
-        self.logger = logging
+        self.logger = logging.getLogger(self.name)
         self.options = options
         self.kit_not_match = True
 
@@ -42,9 +45,9 @@ class RunRemoteKits:
                 self.logger.info("Create folder ikctl")
                 self.sftp.create_folder(conn.connection_sftp, ".ikctl")
 
-            print("###  Starting ikctl ###\n")
-
-            self.logger.info('HOST: %s\n', conn.host)
+            print()
+            self.logger.info("Starting")
+            self.logger.info('HOST: %s', conn.host)
 
             # Get name of kit
             for nm_kit in self.name_kit['kits']:
@@ -53,23 +56,21 @@ class RunRemoteKits:
 
             for local_kit in self.kits:
                 # Destination route where we will upload the kits to the remote server
-                # folder_kit = path.basename(local_kit).replace(".sh", "")
                 remote_kit = f".ikctl/{folder_kit}/{path.basename(local_kit)}"
                 folder = self.sftp.list_dir(conn.connection_sftp, ".ikctl/")
 
                 if folder_kit not in folder:
                     self.sftp.create_folder(conn.connection_sftp, ".ikctl/" + folder_kit)
 
-                self.logger.info('UPLOAD: %s\n', remote_kit)
+                self.logger.info('UPLOAD: %s', remote_kit)
                 self.sftp.upload_file(conn.connection_sftp, local_kit, remote_kit)
                 self.kit_not_match = False
                     
             for cmd in self.pipe:
                 route = path.dirname(remote_kit)
                 kit = path.basename(cmd)
-                check, log, err = self.exe.run_remote(conn, self.options, route, kit, "script", self.servers['password'])
-                self.log.stdout(log, err, check)
-
-            self.logger.info(":END\n")
+                self.exe.run_remote(conn, self.options, route, kit, "script", self.servers['password'])
 
             conn.close_conn_sftp()
+
+        self.logger.info("End process")

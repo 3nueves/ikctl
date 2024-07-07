@@ -16,14 +16,19 @@ class Pipeline:
 
     def __init__(self, options):
 
+        name = __name__.split(".")
+        self.name = name[-1]
+        logging.basicConfig(handlers=[logging.StreamHandler()],
+                            format="%(asctime)s - %(name)s - " "[%(levelname)s] - %(message)s",
+                            level=logging.INFO)
+        self.logger = logging.getLogger(self.name)
         self.options = options
         self.log = Log()
         self.sftp = Sftp()
         self.data = Config()
-        self.logger = logging
         self.file = "ikctl.yaml"
         self.context = Context()
-        self.exe = Exec(Commands)
+        self.exe = Exec(Commands, self.logger)
         self.version = Config().version
         self.config_kits = self.data.load_config_file_kits()
         self.config_servers = self.data.load_config_file_servers()
@@ -39,9 +44,6 @@ class Pipeline:
 
     def init(self):
         """ Function to initiation pipeline """
-
-        self.logger = logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
 
         # Manage context
         if self.options.context:

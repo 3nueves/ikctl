@@ -1,14 +1,14 @@
 """ class to build commands """
 import os
 
-# from .commands import Commands
 from .logs import Log
 
 class Exec:
     """ class to run the kits """
-    def __init__(self, launch_remote_commands: object) -> None:
+    def __init__(self, launch_remote_commands: object, logger: object) -> None:
         self.commands = launch_remote_commands
         self.log = Log()
+        self.logger = logger
 
     def run_remote(self, conn, options, path, kit, mode, password):
         """ run the kits """
@@ -29,9 +29,9 @@ class Exec:
         elif not options.sudo and not options.parameter:
             command = self.commands("cd " + path + ";" + "bash " + kit, conn.connection)
        
-        check, log, err = command.ssh_run_command()
+        command.ssh_run_command(self.logger)
 
-        return check, log, err
+        # return check, log, err
 
     def run_local(self, options, path_kits, password):
         """ run kits in local machine """
@@ -50,6 +50,4 @@ class Exec:
         elif not options.sudo and not options.parameter:
             command = self.commands(f'cd {path}; bash {kit}')
 
-        data = command.run_command()
-
-        return data.stdout, data.stderr, data.returncode
+        command.run_command()
