@@ -74,7 +74,10 @@ EOF
 
 cat <<EOF | tee ~/kits/show-date/ikclt.yaml
 kits:
-- date.sh
+  uploads:
+    - date.sh
+  pipeline:
+    - date.sh
 EOF
 ```
 
@@ -112,12 +115,6 @@ ikctl -l kits
 ```
 ikctl -i show-date -n your-server-name
 ```
-
-
-## Version History
-
-* 0.1
-    * Initial Release
 
 ## License
 
