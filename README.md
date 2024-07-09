@@ -99,7 +99,7 @@ contexts:
     path_kits: ''
     path_secrets: ''
     path_servers: ''
-    mode: 'local'
+    mode: 'remote'
 ```
 
 ### Executing program
