@@ -94,12 +94,12 @@ contexts:
     path_kits: 'path-to-kits/kits'
     path_secrets: '' <= doesn't work, yet
     path_servers: 'path-to-kits/kits'
-    'mode': 'local'
+    mode: 'local'
   remote:
     path_kits: ''
     path_secrets: ''
     path_servers: ''
-    'mode': 'local'
+    mode: 'local'
 ```
 
 ### Executing program
