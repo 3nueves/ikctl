@@ -197,5 +197,8 @@ class Config():
             print(errors)
         finally:
             file.close()
+
+        secrets = ''.join(secrets)
+        secrets = secrets.strip()
             
-        return ''.join(secrets)
+        return secrets
