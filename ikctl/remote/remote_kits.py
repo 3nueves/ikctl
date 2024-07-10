@@ -10,10 +10,11 @@ from .connect import Connection
 class RunRemoteKits:
     """ Class to run kits in remote servers """
 
-    def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object) -> None:
+    def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object, secrets: str) -> None:
 
         name = __name__.split(".")
         self.name = name[-1]
+        self.secrets = secrets
         self.servers = servers
         self.name_kit = name_kit
         self.kits = kits
@@ -38,7 +39,7 @@ class RunRemoteKits:
             sys.exit()
         ## Loop servers
         for host in self.servers['hosts']:
-            conn = Connection(self.servers['user'], self.servers['port'], host, self.servers['pkey'], self.servers['password'])
+            conn = Connection(self.servers['user'], self.servers['port'], host, self.servers['pkey'], self.secrets)
             # Create .ikctl folder in remote server
             folder = self.sftp.list_dir(conn.connection_sftp)
             if ".ikctl" not in folder:
@@ -69,7 +70,7 @@ class RunRemoteKits:
             for cmd in self.pipe:
                 route = path.dirname(remote_kit)
                 kit = path.basename(cmd)
-                self.exe.run_remote(conn, self.options, route, kit, "script", self.servers['password'])
+                self.exe.run_remote(conn, self.options, route, kit, "script", self.secrets)
 
             conn.close_conn_sftp()
 

@@ -57,6 +57,16 @@ class Config():
             print(f'\n keyError: {error} has a mistake\n')
             sys.exit()
 
+    def __load_config_file_secrets(self):
+        """ Load Secrets """
+
+        try:
+            return (self.config['contexts'][self.context]['path_secrets'])
+
+        except (ValueError, KeyError) as error:
+            print(f'\n keyError: {error} has a mistake\n')
+            sys.exit()
+
     def load_config_file_kits(self):
         """ Load kits """
 
@@ -106,8 +116,6 @@ class Config():
             print()
             print("[ikctl - servers config]",e,"\n")
             sys.exit()
-            sys.exit()
-
 
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
@@ -178,3 +186,16 @@ class Config():
         print()
         print("Kit not found")
         exit()
+
+    def extrac_secrets(self) -> str:
+        """ Return secrets """
+        file = open(self.__load_config_file_secrets(), "+a", encoding="utf-8")
+        file.seek(0)
+        try:
+            secrets = file.readlines()
+        except FileNotFoundError as errors:
+            print(errors)
+        finally:
+            file.close()
+            
+        return ''.join(secrets)
