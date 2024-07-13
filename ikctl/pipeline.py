@@ -33,9 +33,9 @@ class Pipeline:
         self.config_kits, self.path_kits = self.data.load_config_file_kits()
         self.config_servers, self.path_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
-        self.secrets = self.data.extrac_secrets()
+        self.secrets, self.path_secrets = self.data.extrac_secrets()
         self.config_contexts = self.context.config
-        self.view = Show(self.config_kits, self.path_kits, self.config_servers, self.path_servers, self.config_contexts, self.config_mode)
+        self.view = Show(self.config_kits, self.path_kits, self.config_servers, self.path_servers, self.config_contexts, self.config_mode, self.path_secrets)
         self.servers = self.data.extract_config_servers(self.config_servers, self.options.name)
         if options.install:
             self.kits, self.pipe = self.data.extrac_config_kits(self.config_kits, self.options.install)

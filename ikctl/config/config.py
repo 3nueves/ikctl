@@ -201,4 +201,4 @@ class Config():
         secrets = ''.join(secrets)
         secrets = secrets.strip()
             
-        return secrets
+        return secrets, self.__load_config_file_secrets()
