@@ -6,7 +6,7 @@ import logging
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.4.5"
+__version__ = "v0.4.9"
 
 class Config():
     """ Manage path kits """
