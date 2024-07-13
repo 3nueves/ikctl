@@ -18,6 +18,4 @@ def create_parser():
     parser.add_argument("-v", "--version", action='version')
     return parser.parse_args()
 
-if __name__ == "__main__":
-    arg = create_parser()
-    Pipeline(arg)
+Pipeline(create_parser())
