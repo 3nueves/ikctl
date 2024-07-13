@@ -4,7 +4,7 @@ import argparse
 from ikctl.pipeline import Pipeline
 from ikctl.config.config import __version__
 
-def create_parser():
+def main():
     """ CLI class """
     parser = argparse.ArgumentParser(description="tool for install software in remote and local machines", prog="ikctl")
     parser.version = __version__
@@ -18,4 +18,4 @@ def create_parser():
     parser.add_argument("-v", "--version", action='version')
     return parser.parse_args()
 
-Pipeline(create_parser())
+Pipeline(main())

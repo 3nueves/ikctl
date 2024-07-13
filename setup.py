@@ -41,7 +41,7 @@ setup(
     python_requires=">=3.10",
     entry_points={
         'console_scripts': [
-            'ikctl=ikctl.main:create_parser'
+            'ikctl=ikctl.main:main'
         ]
     }
 )
