@@ -14,7 +14,6 @@ class RunRemoteKits:
 
         name = __name__.split(".")
         self.name = name[-1]
-        self.secrets = secrets
         self.servers = servers
         self.name_kit = name_kit
         self.kits = kits
@@ -25,6 +24,10 @@ class RunRemoteKits:
         self.logger = logging.getLogger(self.name)
         self.options = options
         self.kit_not_match = True
+        if self.servers['password'] != "no_pass":
+            self.secrets = self.servers["password"]
+        else:
+            self.secrets = secrets
 
     # Run kits in remote servers
     def run_kits(self) -> None:

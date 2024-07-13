@@ -16,11 +16,11 @@ class Connection:
     connection = ""
 
     def __init__(self, user, port, host, pkey, password):
-        self.user     = user
-        self.port     = port
-        self.host     = host
-        self.pkey     = pkey
-        self.password = password
+        self.user       = user
+        self.port       = port
+        self.host       = host
+        self.pkey       = pkey
+        self.password   = password
 
         self.logger = logging
         self.logger.basicConfig()
@@ -42,7 +42,7 @@ class Connection:
                 client.connect(self.host, port=self.port, username=self.user, pkey=private_key, timeout=500)
                 
             elif self.password != "no_pass":
-                self.password = "no_pass"
+                # self.password = "no_pass"
                 client.connect(self.host, port=self.port, username=self.user, password=self.password, allow_agent=False, look_for_keys=False, timeout=500)
 
         except FileNotFoundError as e:
