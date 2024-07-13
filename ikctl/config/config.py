@@ -38,7 +38,7 @@ class Config():
 
         except ValueError as error:
             print(f'\n--- {error} ---\n')
-            sys.exit()
+            exit()
 
         except Exception as e:
             # print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
@@ -80,7 +80,7 @@ class Config():
         try:
             kit = EnvYAML(kits + "/ikctl.yaml")
             if kit.get("kits"):
-                return kit
+                return kit, kits
             else:
                 print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
                 sys.exit()
@@ -106,11 +106,11 @@ class Config():
             sys.exit()
 
         try:
-            return EnvYAML(servers + "/config.yaml")
+            return EnvYAML(servers + "/config.yaml"), servers
 
         except (ValueError) as error:
             print(f'\n--- {error} ---\n')
-            sys.exit()
+            exit()
 
         except Exception as e:
             print()

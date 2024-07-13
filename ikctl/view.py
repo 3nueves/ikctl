@@ -1,9 +1,11 @@
 class Show:
     """ Class to show the app config """
 
-    def __init__(self, kits, servers, context, mode):
+    def __init__(self, kits, path_kits, servers, path_servers, context, mode):
         self.kits = kits
+        self.path_kits = path_kits
         self.servers = servers
+        self.path_servers = path_servers
         self.contexts = context
         self.mode = mode
 
@@ -21,6 +23,8 @@ class Show:
                 print(f' -- {ctx}')
             print(f"\n - Mode: {self.mode}")
             print(f" - Context: {self.contexts['context']}")
+            print(f" - Path Kits: {self.path_kits}")
+            print(f" - Path Servers: {self.path_servers}")
 
         elif "mode" in conf:
             print(f" - Context: {self.contexts['context']}")
@@ -29,6 +33,8 @@ class Show:
             for value in self.servers['servers']:
                 print("")
                 for key, value in value.items():
+                    if key == "password":
+                        value = "*****"
                     print(f"{key}: {value}")
         else:
             print(f"\nYou are in {self.mode} mode")
