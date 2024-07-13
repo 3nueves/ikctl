@@ -74,7 +74,10 @@ EOF
 
 cat <<EOF | tee ~/kits/show-date/ikclt.yaml
 kits:
-- date.sh
+  uploads:
+    - date.sh
+  pipeline:
+    - date.sh
 EOF
 ```
 
@@ -91,10 +94,12 @@ contexts:
     path_kits: 'path-to-kits/kits'
     path_secrets: '' <= doesn't work, yet
     path_servers: 'path-to-kits/kits'
+    mode: 'local'
   remote:
     path_kits: ''
     path_secrets: ''
     path_servers: ''
+    mode: 'remote'
 ```
 
 ### Executing program
@@ -112,12 +117,6 @@ ikctl -l kits
 ```
 ikctl -i show-date -n your-server-name
 ```
-
-
-## Version History
-
-* 0.1
-    * Initial Release
 
 ## License
 

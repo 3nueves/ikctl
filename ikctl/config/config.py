@@ -6,7 +6,7 @@ import logging
 from envyaml import EnvYAML
 from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.4.1"
+__version__ = "v0.4.9"
 
 class Config():
     """ Manage path kits """
@@ -38,7 +38,7 @@ class Config():
 
         except ValueError as error:
             print(f'\n--- {error} ---\n')
-            sys.exit()
+            exit()
 
         except Exception as e:
             # print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
@@ -57,6 +57,16 @@ class Config():
             print(f'\n keyError: {error} has a mistake\n')
             sys.exit()
 
+    def __load_config_file_secrets(self):
+        """ Load Secrets """
+
+        try:
+            return (self.config['contexts'][self.context]['path_secrets'])
+
+        except (ValueError, KeyError) as error:
+            print(f'\n keyError: {error} has a mistake\n')
+            sys.exit()
+
     def load_config_file_kits(self):
         """ Load kits """
 
@@ -70,7 +80,7 @@ class Config():
         try:
             kit = EnvYAML(kits + "/ikctl.yaml")
             if kit.get("kits"):
-                return kit
+                return kit, kits
             else:
                 print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
                 sys.exit()
@@ -96,18 +106,16 @@ class Config():
             sys.exit()
 
         try:
-            return EnvYAML(servers + "/config.yaml")
+            return EnvYAML(servers + "/config.yaml"), servers
 
         except (ValueError) as error:
             print(f'\n--- {error} ---\n')
-            sys.exit()
+            exit()
 
         except Exception as e:
             print()
             print("[ikctl - servers config]",e,"\n")
             sys.exit()
-            sys.exit()
-
 
     def extract_config_servers(self, config, group=None):
         """ Extract values from config file """
@@ -178,3 +186,19 @@ class Config():
         print()
         print("Kit not found")
         exit()
+
+    def extrac_secrets(self) -> str:
+        """ Return secrets """
+        file = open(self.__load_config_file_secrets(), "+a", encoding="utf-8")
+        file.seek(0)
+        try:
+            secrets = file.readlines()
+        except FileNotFoundError as errors:
+            print(errors)
+        finally:
+            file.close()
+
+        secrets = ''.join(secrets)
+        secrets = secrets.strip()
+            
+        return secrets, self.__load_config_file_secrets()

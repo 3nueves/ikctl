@@ -10,7 +10,7 @@ from .connect import Connection
 class RunRemoteKits:
     """ Class to run kits in remote servers """
 
-    def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object) -> None:
+    def __init__(self, servers: dict, name_kit: str, kits: list, pipe: list, sftp: object, exe: object, log: object, options: object, secrets: str) -> None:
 
         name = __name__.split(".")
         self.name = name[-1]
@@ -24,6 +24,10 @@ class RunRemoteKits:
         self.logger = logging.getLogger(self.name)
         self.options = options
         self.kit_not_match = True
+        if self.servers['password'] != "no_pass":
+            self.secrets = self.servers["password"]
+        else:
+            self.secrets = secrets
 
     # Run kits in remote servers
     def run_kits(self) -> None:
@@ -38,7 +42,7 @@ class RunRemoteKits:
             sys.exit()
         ## Loop servers
         for host in self.servers['hosts']:
-            conn = Connection(self.servers['user'], self.servers['port'], host, self.servers['pkey'], self.servers['password'])
+            conn = Connection(self.servers['user'], self.servers['port'], host, self.servers['pkey'], self.secrets)
             # Create .ikctl folder in remote server
             folder = self.sftp.list_dir(conn.connection_sftp)
             if ".ikctl" not in folder:
@@ -69,7 +73,7 @@ class RunRemoteKits:
             for cmd in self.pipe:
                 route = path.dirname(remote_kit)
                 kit = path.basename(cmd)
-                self.exe.run_remote(conn, self.options, route, kit, "script", self.servers['password'])
+                self.exe.run_remote(conn, self.options, route, kit, "script", self.secrets)
 
             conn.close_conn_sftp()
 
