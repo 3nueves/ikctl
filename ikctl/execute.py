@@ -45,7 +45,7 @@ class Exec:
             command = self.commands(f'cd {path}; echo {password} | sudo -S bash {kit}')
 
         elif not options.sudo and options.parameter:
-            command = self.commands(f'cd {path}; bash {kit} {' '.join(options.parameter)}')
+            command = self.commands(f"cd {path}; bash {kit} {' '.join(options.parameter)}")
 
         elif not options.sudo and not options.parameter:
             command = self.commands(f'cd {path}; bash {kit}')
