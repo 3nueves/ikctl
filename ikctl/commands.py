@@ -40,7 +40,7 @@ class Commands:
     def run_command(self):
         """ run kits in local machine """
 
-        self.logger.info(f"EXEC: {re.sub("echo (.*) \\|", "echo ************ |", self.command)}")
+        self.logger.info(f"EXEC: {re.sub('echo (.*) \\|', 'echo ************ |', self.command)}")
 
         data = run([self.command], shell=True, text=True, capture_output=True, timeout=30)
 
