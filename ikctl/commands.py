@@ -7,6 +7,7 @@ from subprocess import run
 import paramiko
 from .logs import Log
 
+
 class Commands:
     """ Class to exec kit in remote and locals servers """
 
@@ -22,10 +23,10 @@ class Commands:
         """ execute script bash in remote server """
 
         try:
-            logger.info(re.sub("echo (.*) \\|","echo ************ |",f'EXEC: {self.command}'))
+            logger.info(re.sub("echo (.*) \\|", "echo ************ |", f'EXEC: {self.command}'))
             stdin, stdout, stderr = self.client.exec_command(self.command)
 
-            for log in stdout :
+            for log in stdout:
                 print(f"\033[1;32m{log.strip()}")
 
             for log in stderr:
@@ -39,7 +40,7 @@ class Commands:
     def run_command(self):
         """ run kits in local machine """
 
-        self.logger.info(f"EXEC: {re.sub("echo (.*) \\|","echo ************ |",self.command)}")
+        self.logger.info(f"EXEC: {re.sub("echo (.*) \\|", "echo ************ |", self.command)}")
 
         data = run([self.command], shell=True, text=True, capture_output=True, timeout=30)
 
