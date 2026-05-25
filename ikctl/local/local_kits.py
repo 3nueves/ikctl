@@ -1,6 +1,7 @@
 """ Module to Run kits in local servers """
 import logging
 
+
 class RunLocalKits:
     """ Class to run kits in locals servers """
 
@@ -15,7 +16,7 @@ class RunLocalKits:
         self.log = log
         self.options = options
         self.logger = logging.getLogger(self.name)
-    
+
     def run_kits(self) -> None:
         """ Execute kits """
 
@@ -25,8 +26,8 @@ class RunLocalKits:
 
         print()
         self.logger.info("Starting")
-        
+
         for cmd in self.pipe:
             self.exe.run_local(self.options, cmd, self.servers['password'])
-            
+
         self.logger.info(":END")
