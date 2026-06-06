@@ -1,66 +1,110 @@
-""" Module to launch one pipeline to install kits to the remote servers  """
-import logging
+"""Pipeline: orchestrates kit installation on remote or local servers."""
+from __future__ import annotations
 
-from .logs import Log
-from .view import Show
-from .execute import Exec
-from .config.config import Config
-from .context import Context
-from .remote.sftp import Sftp
-from .commands import Commands
-from .local.local_kits import RunLocalKits
-from .remote.remote_kits import RunRemoteKits
+import logging
+import sys
+
+from rich.console import Console
+
+from ikctl.config.config import Config
+from ikctl.config.exceptions import KitNotFoundError, ServerNotFoundError
+from ikctl.config.models import KitPipeline, ServerGroup
+from ikctl.context import Context
+from ikctl.logs import Log
+from ikctl.runner.base import IRunner
+from ikctl.runner.result import RunResult
+from ikctl.view import Show
+
+_console = Console()
+_error_console = Console(stderr=True)
+
 
 class Pipeline:
-    """ Class where we will initiation the process to install kits on remote servers """
+    """Orchestrates the process of installing kits on remote or local servers."""
 
-    def __init__(self, options):
-
-        name = __name__.split(".")
-        self.name = name[-1]
-        logging.basicConfig(handlers=[logging.StreamHandler()],
-                            format="%(asctime)s - %(name)s - " "[%(levelname)s] - %(message)s",
-                            level=logging.INFO)
-        self.logger = logging.getLogger(self.name)
+    def __init__(self, runner: IRunner, options: object) -> None:
+        """Initialise Pipeline with an already-constructed runner and parsed options."""
+        self._logger = logging.getLogger(__name__)
+        self._runner = runner
         self.options = options
         self.log = Log()
-        self.sftp = Sftp()
         self.data = Config()
-        self.file = "ikctl.yaml"
-        self.context = Context()
-        self.exe = Exec(Commands, self.logger)
-        self.version = Config().version
+
         self.config_kits, self.path_kits = self.data.load_config_file_kits()
         self.config_servers, self.path_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
-        self.secrets, self.path_secrets = self.data.extrac_secrets()
+        self.secrets, self.path_secrets = self.data.extract_secrets()
+
+        self.context = Context()
         self.config_contexts = self.context.config
-        self.view = Show(self.config_kits, self.path_kits, self.config_servers, self.path_servers, self.config_contexts, self.config_mode, self.path_secrets)
-        self.servers = self.data.extract_config_servers(self.config_servers, self.options.name)
+
+        self.view = Show(
+            list(self.config_kits["kits"]),
+            self.path_kits,
+            list(self.config_servers["servers"]),
+            self.path_servers,
+            self.config_contexts,
+            self.config_mode,
+            self.path_secrets,
+            path_pipelines=self.data.load_path_pipelines(),
+            kit_pipelines=self.data.load_kit_pipelines(),
+        )
+
+        try:
+            servers_dict = self.data.extract_config_servers(self.config_servers, self.options.name)
+        except ServerNotFoundError as exc:
+            print(f"\nError: {exc}\n", file=sys.stderr)
+            sys.exit(1)
+
+        self.servers = ServerGroup(
+            user=servers_dict["user"],
+            port=servers_dict["port"],
+            hosts=servers_dict["hosts"],
+            password=servers_dict["password"],
+            pkey=servers_dict.get("pkey"),
+        )
+
+        self._kit: KitPipeline | None = None
         if options.install:
-            self.kits, self.pipe = self.data.extrac_config_kits(self.config_kits, self.options.install)
-            self.run_remote_kits = RunRemoteKits(self.servers, self.config_kits, self.kits, self.pipe, self.sftp, self.exe, self.log, self.options, self.secrets)
-            self.run_local_kits = RunLocalKits(self.servers, self.kits, self.pipe, self.exe, self.log, self.options)
-        self.init()
+            try:
+                uploads, pipeline_steps = self.data.extract_config_kits(self.config_kits, self.options.install)
+            except KitNotFoundError as exc:
+                print(f"\nError: {exc}\n", file=sys.stderr)
+                sys.exit(1)
 
-    def init(self):
-        """ Function to initiation pipeline """
+            self._kit = KitPipeline(uploads=uploads, pipeline=pipeline_steps)
 
-        # Manage context
+        self._run()
+
+    def _print_results(self, results: list[RunResult]) -> None:
+        """Print run results using Rich and a summary line."""
+        for result in results:
+            if result.stdout:
+                for line in result.stdout.splitlines():
+                    _console.print(f"[cyan]{line}[/cyan]")
+            if result.stderr:
+                for line in result.stderr.splitlines():
+                    _error_console.print(f"[red]{line}[/red]")
+            self.log.stdout(None, None, 0 if result.success else 1)
+
+        ok_count = sum(1 for r in results if r.success)
+        failed_count = sum(1 for r in results if not r.success)
+        if failed_count == 0:
+            _console.print(f"\n[bold green]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold green]")
+        else:
+            _console.print(f"\n[bold red]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold red]")
+
+        if not all(r.success for r in results):
+            sys.exit(1)
+
+    def _run(self) -> None:
+        """Execute the pipeline based on parsed options."""
         if self.options.context:
             self.context.change_context(self.options.context)
-        
-        # Show configuration
+
         if self.options.list:
             self.view.show_config(self.options.list)
-        
-        # Install kits in servers
+
         if self.options.install:
-
-            # Run kits in local machine
-            if self.config_mode == 'local' or self.options.mode == 'local':
-                self.run_local_kits.run_kits()
-
-            # Run kits in remote servers
-            elif self.config_mode == 'remote' or self.options.mode == 'remote':
-                self.run_remote_kits.run_kits()
+            results = self._runner.run(self._kit, self.servers, self.options)
+            self._print_results(results)

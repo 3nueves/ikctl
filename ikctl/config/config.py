@@ -1,204 +1,182 @@
-""" Module to load configuration """
-import pathlib
-import os
-import sys
+"""Backward-compatible Config facade delegating to the new SOLID classes."""
+from __future__ import annotations
+
 import logging
+import pathlib
+import sys
+
 from envyaml import EnvYAML
-from .create_config_files import CreateFolderAndConfigFile
 
-__version__ = "v0.6.1"
+from ikctl.config.bootstrap import ConfigBootstrap
+from ikctl.config.exceptions import ConfigError, KitNotFoundError, ServerNotFoundError
+from ikctl.config.kit_repo import KitRepository
+from ikctl.config.loader import ConfigLoader
 
-class Config():
-    """ Manage path kits """
+__version__ = "1.1.2"
 
-    def __init__(self):
-        self.config = ""
-        name = __name__.split(".")
-        self.name = name[-1]
-        self.logger = logging.getLogger(self.name)
+_logger = logging.getLogger(__name__)
+
+
+class Config:
+    """Backward-compatible configuration facade.
+
+    Delegates to ConfigLoader, ConfigBootstrap, KitRepository and ServerRepository.
+    Raises domain exceptions (ServerNotFoundError, KitNotFoundError, ConfigError) on error.
+    """
+
+    def __init__(self) -> None:
+        self._logger = logging.getLogger(__name__)
         self.version = __version__
         self.home = pathlib.Path.home()
-        self.path_config_file = self.home.joinpath('.ikctl/config')
-        self.create_config_file = CreateFolderAndConfigFile()
-        self.__create_folder_and_config_file()
-        self.__load_config_file_where_are_kits()
-        self.context = self.config['context']
+        self.path_config_file = self.home / ".ikctl" / "config"
 
-
-    def __create_folder_and_config_file(self):
-        """ Create Config file and folder """
-        self.create_config_file.create_folder()
-        self.create_config_file.create_config_file()
-
-
-    def __load_config_file_where_are_kits(self):
-        """ Load Config ikctl """
-        try:
-            self.config = EnvYAML(self.path_config_file, strict=False)
-
-        except ValueError as error:
-            print(f'\n--- {error} ---\n')
-            exit()
-
-        except Exception as e:
-            # print(f"\nERROR IN FILE: {self.path_config_file}\n\n", e)
-            print("\n",e)
-            sys.exit()
-
-        return self.config
-
-    def load_config_file_mode(self):
-        """ Load Mode """
+        bootstrap = ConfigBootstrap(interactive=True)
+        bootstrap.setup()
 
         try:
-            return (self.config['contexts'][self.context]['mode'])
+            loader = ConfigLoader(config_path=self.path_config_file)
+            self._ikctl_config = loader.load()
+        except ConfigError as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            sys.exit(1)
 
-        except (ValueError, KeyError) as error:
-            print(f'\n keyError: {error} has a mistake\n')
-            sys.exit()
+        self.context = self._ikctl_config.context
 
-    def __load_config_file_secrets(self):
-        """ Load Secrets """
+    def load_config_file_mode(self) -> str:
+        """Returns the mode ('local' or 'remote') for the active context."""
+        try:
+            return self._ikctl_config.contexts[self.context].mode
+        except KeyError as exc:
+            print(f"\n keyError: {exc} has a mistake\n", file=sys.stderr)
+            sys.exit(1)
+
+    def load_timeout_connect(self) -> float:
+        """Returns timeout_connect for the active context (default 30.0)."""
+        try:
+            return self._ikctl_config.contexts[self.context].timeout_connect
+        except KeyError:
+            return 30.0
+
+    def load_timeout_exec(self) -> float:
+        """Returns timeout_exec for the active context (default 120.0)."""
+        try:
+            return self._ikctl_config.contexts[self.context].timeout_exec
+        except KeyError:
+            return 120.0
+
+    def load_config_file_kits(self) -> tuple:
+        """Returns (kits_dict, path_kits) for the active context using auto-discovery."""
+        try:
+            path_kits = self._ikctl_config.contexts[self.context].path_kits
+        except KeyError as exc:
+            print(f"\n keyError: {exc} has a mistake\n", file=sys.stderr)
+            sys.exit(1)
+
+        repo = KitRepository(self._ikctl_config)
+        discovered = repo.list_kits()
+        kits_dict = {"kits": [f"{name}/ikctl.yaml" for name in discovered]}
+        return kits_dict, path_kits
+
+    def load_config_file_servers(self) -> tuple:
+        """Returns (servers_envyaml, path_servers) for the active context."""
+        try:
+            path_servers = self._ikctl_config.contexts[self.context].path_servers
+        except KeyError as exc:
+            print(f"\n keyError: {exc} has a mistake\n", file=sys.stderr)
+            sys.exit(1)
 
         try:
-            return (self.config['contexts'][self.context]['path_secrets'])
+            return EnvYAML(path_servers + "/config.yaml", strict=False), path_servers
+        except ValueError as exc:
+            print(f"\n--- {exc} ---\n", file=sys.stderr)
+            sys.exit(1)
+        except Exception as exc:
+            print(f"\n[ikctl - servers config] {exc}\n", file=sys.stderr)
+            sys.exit(1)
 
-        except (ValueError, KeyError) as error:
-            print(f'\n keyError: {error} has a mistake\n')
-            sys.exit()
+    def extract_config_servers(self, config: object, group: str | None = None) -> dict:
+        """Extracts a ServerGroup dict from the raw servers config.
 
-    def load_config_file_kits(self):
-        """ Load kits """
+        When group is None returns the FIRST group, not the last (bug fix).
+        """
+        hosts: list[str] = []
+        user = "root"
+        port = 22
+        password = "no_pass"
+        pkey = None
 
-        try:
-            kits = (self.config['contexts'][self.context]['path_kits'])
+        for entry in config["servers"]:
+            if group == entry["name"] or group is None:
+                user = entry.get("user", "root")
+                port = entry.get("port", 22)
+                password = entry.get("password", "no_pass")
+                pkey = entry.get("pkey", None)
+                if entry.get("hosts"):
+                    hosts = list(entry["hosts"])
+                if group is None:
+                    break
 
-        except (ValueError, KeyError) as error:
-            print(f'\n keyError: {error} has a mistake\n')
-            sys.exit()
-
-        try:
-            kit = EnvYAML(kits + "/ikctl.yaml")
-            if kit.get("kits"):
-                return kit, kits
-            else:
-                print(f"\nERROR IN FILE: {kits}/ikctl.yaml\n")
-                sys.exit()
-
-        except (ValueError, KeyError):
-            print(f'\n KeyError: {error} there is a mistake\n')
-            sys.exit()
-
-        except Exception as e:
-            print()
-            print("[ikctl - kits configs]",e,"\n")
-            sys.exit()
-        
-
-    def load_config_file_servers(self):
-        """ Load Hosts """
-
-        try:
-            servers = (self.config['contexts'][self.context]['path_servers'])
-        
-        except (ValueError, KeyError) as error:
-            print(f'\n keyError: {error} has a mistake\n')
-            sys.exit()
-
-        try:
-            return EnvYAML(servers + "/config.yaml"), servers
-
-        except (ValueError) as error:
-            print(f'\n--- {error} ---\n')
-            exit()
-
-        except Exception as e:
-            print()
-            print("[ikctl - servers config]",e,"\n")
-            sys.exit()
-
-    def extract_config_servers(self, config, group=None):
-        """ Extract values from config file """
-        hosts = []
-
-        for m in config["servers"]:
-            if group == m["name"]:
-                user     = m.get("user", "kub")
-                port     = m.get("port", 22)
-                password = m.get("password", "no_pass")
-                pkey     = m.get("pkey", None)
-                if m.get("hosts", None):
-                    hosts = [host for host in m['hosts']]
-            elif group is None:
-                user     = m.get("user", "kub")
-                port     = m.get("port", 22)
-                password = m.get("password", "no_pass")
-                pkey     = m.get("pkey", None)
-                if m.get("hosts", None):
-                    hosts = [host for host in m['hosts']]
         if not hosts:
-            print("Host not found")
-            sys.exit()
+            raise ServerNotFoundError("Host not found")
 
-        data = {
-            'user': user,
-            'port': port,
-            'pkey': pkey,
-            'hosts': hosts,
-            'password': password
+        return {
+            "user": user,
+            "port": port,
+            "pkey": pkey,
+            "hosts": hosts,
+            "password": password,
         }
 
-        return data
-        # return user, port, pkey, hosts, password
-
-    def extrac_config_kits(self, config, name_kit):
-        """ Extract values from config file """
-        uploads = []
-        pipeline = []
-
-        # Route where the kits are located
-        path_kits = self.config['contexts'][self.context]['path_kits']
-
-        # We tour the cars that we have extracted from above
-        for kit in config['kits']:
-
-            # Buscamos la coincidencia con el kit que deseamos
-            if name_kit == os.path.dirname(kit):
-
-                # Generamos las rutas hasta donde están los kits
-                # para poder subirlos a los servidores
-                path_until_folder = os.path.dirname(path_kits + "/" + kit)
-                object_with_path = EnvYAML(path_kits + "/" + kit)
-
-                # Append all kits that we want upload
-                for upload in object_with_path["kits"]["uploads"]:
-                    uploads.append(path_until_folder + "/" + upload)
-
-                # Append the kits that we are running 
-                for pipe in object_with_path['kits']['pipeline']:
-                    pipeline.append(path_until_folder + "/" + pipe)
-
-                if uploads is None:
-                    print("Kit not found")
-                    sys.exit()
-                else:
-                    return uploads, pipeline
-        print()
-        print("Kit not found")
-        exit()
-
-    def extrac_secrets(self) -> str:
-        """ Return secrets """
-        file = open(self.__load_config_file_secrets(), "+a", encoding="utf-8")
-        file.seek(0)
+    def extract_config_kits(self, config: object, name_kit: str) -> tuple:
+        """Extracts (uploads, pipeline) lists for the named kit using auto-discovery."""
+        repo = KitRepository(self._ikctl_config)
         try:
-            secrets = file.readlines()
-        except FileNotFoundError as errors:
-            print(errors)
-        finally:
-            file.close()
+            kit_pipeline = repo.resolve(name_kit)
+        except KitNotFoundError:
+            raise
+        return kit_pipeline.uploads, kit_pipeline.pipeline
 
-        secrets = ''.join(secrets)
-        secrets = secrets.strip()
-            
-        return secrets, self.__load_config_file_secrets()
+    def load_path_pipelines(self) -> str | None:
+        """Returns path_pipelines for the active context, or None if not set."""
+        try:
+            return self._ikctl_config.contexts[self.context].path_pipelines
+        except KeyError:
+            return None
+
+    def load_kit_pipelines(self) -> dict:
+        """Returns a dict mapping kit name to KitPipeline for the active context."""
+        from ikctl.config.models import KitPipeline
+        repo = KitRepository(self._ikctl_config)
+        kit_names = repo.list_kits()
+        result: dict[str, KitPipeline] = {}
+        for name in kit_names:
+            try:
+                result[name] = repo.resolve(name)
+            except Exception:
+                pass
+        return result
+
+    def extract_secrets(self) -> tuple[str, str]:
+        """Returns (secrets_content, path_secrets) for the active context."""
+        path_secrets = self._ikctl_config.contexts[self.context].path_secrets
+        if not path_secrets:
+            return "", ""
+        try:
+            with open(path_secrets, "a+", encoding="utf-8") as f:
+                f.seek(0)
+                secrets = f.readlines()
+        except FileNotFoundError as exc:
+            self._logger.error("Secrets file not found: %s", exc)
+            return "", path_secrets
+
+        secrets_str = "".join(secrets).strip()
+        return secrets_str, path_secrets
+
+    # Keep old typo names as aliases so any existing callers still work.
+    def extrac_config_kits(self, config: object, name_kit: str) -> tuple:
+        """Alias for extract_config_kits (typo preserved for backward compatibility)."""
+        return self.extract_config_kits(config, name_kit)
+
+    def extrac_secrets(self) -> tuple[str, str]:
+        """Alias for extract_secrets (typo preserved for backward compatibility)."""
+        return self.extract_secrets()
