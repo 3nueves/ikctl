@@ -40,7 +40,7 @@
         "uv run ikctl --version imprime la versión correcta (sin 'v')",
         "uv build genera dist/*.whl y dist/*.tar.gz sin errores",
         "init.sh actualizado: usa 'uv run pytest' en lugar de 'python3 -m pytest'",
-        ".claude/settings.json actualizado: permiso 'Bash(uv run pytest*)' en lugar de 'Bash(python3 -m pytest*)'"
+        ".opencode/settings.json actualizado: permiso 'Bash(uv run pytest*)' en lugar de 'Bash(python3 -m pytest*)'"
       ],
       "status": "done",
       "type": "feature"

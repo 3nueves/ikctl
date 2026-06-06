@@ -32,7 +32,7 @@
 12. `uv run ikctl --version` prints version without `v` — CONFIRMED (test passes, output verified)
 13. `uv build` generates `dist/ikctl-0.6.4.tar.gz` and `dist/ikctl-0.6.4-py3-none-any.whl` — CONFIRMED
 14. `init.sh` uses `uv run pytest` instead of `python3 -m pytest` — CONFIRMED (`init.sh` line 81)
-15. `.claude/settings.json` has `Bash(uv run pytest*)` permission — CONFIRMED (line 30 of settings.json)
+15. `.opencode/settings.json` has `Bash(uv run pytest*)` permission — CONFIRMED (line 30 of settings.json)
 
 ## Notes
 

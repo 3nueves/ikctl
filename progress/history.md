@@ -12,7 +12,7 @@
 - Cambiado `__version__ = "v0.6.4"` a `__version__ = "0.6.4"` en `ikctl/config/config.py`.
 - Eliminados `setup.py`, `Pipfile` y `Pipfile.lock`.
 - Actualizado `init.sh`: `uv run pytest` en lugar de `python3 -m pytest`.
-- Actualizado `.claude/settings.json`: permiso `Bash(uv run pytest*)` en lugar de `Bash(python3 -m pytest*)`.
+- Actualizado `.opencode/settings.json`: permiso `Bash(uv run pytest*)` en lugar de `Bash(python3 -m pytest*)`.
 - `.gitignore` ya tenia `.venv` y `uv.lock` no estaba ignorado — sin cambios necesarios.
 - `uv sync` instaló el entorno correctamente, `uv run ikctl --version` devuelve `0.6.4`.
 - `uv build` genera `dist/ikctl-0.6.4.tar.gz` y `dist/ikctl-0.6.4-py3-none-any.whl`.
