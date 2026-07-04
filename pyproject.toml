@@ -23,11 +23,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "paramiko>=3.0",
+    "paramiko>=3.0,<4.0",
     "pyaml",
     "envyaml",
     "rich>=13.0",
-    "PyYAML>=6.0",
 ]
 
 [project.scripts]
@@ -44,6 +43,11 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.5",
 ]
+
+[tool.pytest.ini_options]
+tmp_path_retention_policy = "all"
+tmp_path_retention_count = 10
+basetemp = "/Users/davidmoyalopez/tmp/pytest"
 
 [tool.ruff]
 line-length = 100

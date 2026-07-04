@@ -9,7 +9,7 @@ import pytest
 from ikctl.config.models import IkctlConfig, Context, KitPipeline, ServerGroup
 from ikctl.orchestration.parser import PipelineDef, StepDef
 from ikctl.orchestration.runner import OrchestrationRunner, StepResult
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import RunResult
 
 
 def make_context(name: str = "default") -> Context:
@@ -259,7 +259,7 @@ class TestOrchestrationRunnerOutputPropagation:
 
 class TestOrchestrationRunnerErrors:
     def test_kit_not_found_marks_step_failed(self, config, connection_factory):
-        from ikctl.config.exceptions import KitNotFoundError
+        from ikctl.exceptions import KitNotFoundError
         runner = _make_runner(config, connection_factory)
         pipeline = make_pipeline(make_step("a"))
 
@@ -271,7 +271,7 @@ class TestOrchestrationRunnerErrors:
         assert "mykut" in results[0].stderr
 
     def test_server_not_found_marks_step_failed(self, config, connection_factory):
-        from ikctl.config.exceptions import ServerNotFoundError
+        from ikctl.exceptions import ServerNotFoundError
         runner = _make_runner(config, connection_factory)
         pipeline = make_pipeline(make_step("a"))
 

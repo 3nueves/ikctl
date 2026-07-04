@@ -5,7 +5,7 @@ import logging
 
 from envyaml import EnvYAML
 
-from ikctl.config.exceptions import ServerNotFoundError
+from ikctl.exceptions import ServerNotFoundError
 from ikctl.config.models import IkctlConfig, ServerGroup
 
 
@@ -48,7 +48,7 @@ class ServerRepository:
                     user=entry.get("user", "root"),
                     port=int(entry.get("port", 22)),
                     hosts=list(hosts),
-                    password=entry.get("password", "no_pass"),
+                    password=entry.get("password") or None,
                     pkey=entry.get("pkey", None),
                 )
                 self._logger.debug("Resolved server group '%s'", name)

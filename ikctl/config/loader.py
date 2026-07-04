@@ -6,7 +6,7 @@ import pathlib
 
 from envyaml import EnvYAML
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.config.models import Context, IkctlConfig
 
 _logger = logging.getLogger(__name__)

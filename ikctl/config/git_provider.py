@@ -6,7 +6,7 @@ import logging
 import pathlib
 import subprocess
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 
 
 class GitKitsProvider:

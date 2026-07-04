@@ -15,7 +15,7 @@ def _make_show(path_pipelines: str | None = None) -> Show:
     """Returns a Show instance with minimal fixture data and optional path_pipelines."""
     kits = ["my-kit/ikctl.yaml"]
     servers = [
-        {"name": "web", "user": "root", "port": 22, "password": "no_pass", "hosts": ["1.2.3.4"]},
+        {"name": "web", "user": "root", "port": 22, "password": None, "hosts": ["1.2.3.4"]},
     ]
     contexts = {
         "contexts": ["dev"],

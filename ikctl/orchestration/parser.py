@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import yaml
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 
 
 @dataclass(frozen=True)

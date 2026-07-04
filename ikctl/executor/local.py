@@ -5,7 +5,7 @@ import logging
 import re
 import subprocess
 
-from ikctl.executor.base import IExecutor
+from ikctl.executor.interface import IExecutor
 
 
 def _censor(command: str) -> str:
@@ -31,8 +31,10 @@ class LocalExecutor(IExecutor):
                 text=True,
                 capture_output=True,
                 timeout=self._timeout,
+                check=False  # We handle exit codes ourselves
             )
             return result.stdout, result.stderr, result.returncode
         except subprocess.TimeoutExpired:
-            self._logger.warning("Command timed out after %s seconds: %s", self._timeout, _censor(command))
+            self._logger.warning(
+                "Command timed out after %s seconds: %s", self._timeout, _censor(command))
             return "", "Timeout expired", 1

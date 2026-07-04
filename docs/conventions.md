@@ -194,6 +194,10 @@ Aplicar antes de cualquier `logger.info()` o salida que incluya el comando ejecu
 - Nombres descriptivos: `test_resolve_raises_kit_not_found_when_name_missing`.
 - Runner: `uv run pytest tests -v`.
 
+## Gestión de cambios
+
+Todo cambio de código — refactor, mejora o bugfix — debe registrarse como una entrada en `feature_list.json` **antes** de implementarlo, con el tipo correcto (`bugfix`, `refactor` o `feature`) y status `pending`.
+
 ## Docstrings
 
 Una línea por módulo y por método público.

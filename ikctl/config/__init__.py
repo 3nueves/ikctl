@@ -1,6 +1,6 @@
 """ikctl config package — public API."""
 from ikctl.config.bootstrap import ConfigBootstrap
-from ikctl.config.exceptions import (
+from ikctl.exceptions import (
     ConfigError,
     IkctlError,
     KitNotFoundError,

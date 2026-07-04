@@ -4,10 +4,9 @@ from __future__ import annotations
 import textwrap
 
 import pytest
-import yaml
 
-from ikctl.config.exceptions import ConfigError
-from ikctl.orchestration.parser import PipelineParser, PipelineDef, StepDef
+from ikctl.exceptions import ConfigError
+from ikctl.orchestration.parser import PipelineParser, PipelineDef
 
 
 @pytest.fixture

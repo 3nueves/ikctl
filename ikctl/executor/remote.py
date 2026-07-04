@@ -4,8 +4,8 @@ from __future__ import annotations
 import logging
 import re
 
-from ikctl.connection.base import IConnection
-from ikctl.executor.base import IExecutor
+from ikctl.connection.interface import IConnection
+from ikctl.executor.interface import IExecutor
 
 
 def _censor(command: str) -> str:

@@ -6,7 +6,7 @@ import pathlib
 import pytest
 import yaml
 
-from ikctl.config.exceptions import KitNotFoundError
+from ikctl.exceptions import KitNotFoundError
 from ikctl.config.kit_repo import KitRepository
 from ikctl.config.models import Context, IkctlConfig, KitPipeline
 

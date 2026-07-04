@@ -4,12 +4,12 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from ikctl.config.models import ServerGroup
-from ikctl.connection.options import SSHOptions
+from ikctl.connection.models import SSHOptions
 from ikctl.main import _build_runner
 
 
 def _make_servers(
-    password: str = "no_pass",
+    password: str | None = None,
     pkey: str | None = None,
     hosts: list[str] | None = None,
 ) -> ServerGroup:
@@ -27,6 +27,7 @@ def _make_options(dry_run: bool = False, mode: str = "remote", parallel_workers:
     """Build a minimal options namespace for _build_runner."""
 
     class Opts:
+        """Minimal options namespace for testing."""
         pass
 
     opts = Opts()
@@ -50,9 +51,12 @@ class TestPkeyAuthMethodSelection:
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         assert len(captured) == 1, "SSHConnection was not called"
         ssh_opts = captured[0]
@@ -68,9 +72,12 @@ class TestPkeyAuthMethodSelection:
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         ssh_opts = captured[0]
         assert ssh_opts.key_filename == "/path/to/key"
@@ -85,9 +92,12 @@ class TestPkeyAuthMethodSelection:
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         ssh_opts = captured[0]
         assert ssh_opts.password is None
@@ -104,9 +114,12 @@ class TestPasswordAuthMethodSelection:
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         ssh_opts = captured[0]
         assert ssh_opts.password == "mypassword"
@@ -120,14 +133,17 @@ class TestNoCredentialsAuthMethodSelection:
 
     def test_no_credentials_uses_agent_discovery(self) -> None:
         """SSHOptions receives allow_agent=True, look_for_keys=True, password=None."""
-        servers = _make_servers(password="no_pass", pkey=None)
+        servers = _make_servers(password=None, pkey=None)
         opts = _make_options()
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         ssh_opts = captured[0]
         assert ssh_opts.allow_agent is True
@@ -135,16 +151,77 @@ class TestNoCredentialsAuthMethodSelection:
         assert ssh_opts.password is None
 
     def test_secrets_used_as_password_when_no_explicit_credentials(self) -> None:
-        """When servers.password='no_pass' and pkey=None, secrets is passed as password with agent=True."""
-        servers = _make_servers(password="no_pass", pkey=None)
+        """When servers.password=None and pkey=None, secrets is passed as password with agent=True."""
+        servers = _make_servers(password=None, pkey=None)
         opts = _make_options()
         captured: list[SSHOptions] = []
 
         with patch("ikctl.main.SSHConnection") as mock_conn_cls:
-            mock_conn_cls.side_effect = lambda o: captured.append(o) or MagicMock()
-            runner = _build_runner(opts, servers, secrets="vault_secret", timeout_connect=30.0, timeout_exec=120.0)
-            runner._connection_factory("10.0.0.1")  # type: ignore[attr-defined]
+            mock_conn_cls.side_effect = lambda o: captured.append(
+                o) or MagicMock()
+            runner = _build_runner(
+                opts, servers, secrets="vault_secret", timeout_connect=30.0, timeout_exec=120.0)
+            # type: ignore[attr-defined]
+            runner._connection_factory("10.0.0.1")
 
         ssh_opts = captured[0]
         assert ssh_opts.password == "vault_secret"
         assert ssh_opts.allow_agent is True
+
+
+class TestSSHOptionsFromServerGroup:
+    """Direct unit tests for SSHOptions.from_server_group() classmethod."""
+
+    def test_pkey_selects_publickey_auth(self) -> None:
+        """When pkey is set, SSHOptions uses publickey auth regardless of password."""
+        servers = _make_servers(pkey="/path/to/key")
+        opts = SSHOptions.from_server_group(
+            "10.0.0.1", servers, secrets="", timeout=30.0)
+        assert opts.key_filename == "/path/to/key"
+        assert opts.password is None
+        assert opts.allow_agent is False
+        assert opts.look_for_keys is False
+
+    def test_pkey_ignores_password(self) -> None:
+        """When pkey is set, password is ignored even if it's defined."""
+        servers = _make_servers(pkey="/path/to/key", password="secret")
+        opts = SSHOptions.from_server_group(
+            "10.0.0.1", servers, secrets="", timeout=30.0)
+        assert opts.password is None
+        assert opts.key_filename == "/path/to/key"
+
+    def test_password_selects_password_auth(self) -> None:
+        """When password is set and pkey is None, SSHOptions uses password auth."""
+        servers = _make_servers(password="mypassword", pkey=None)
+        opts = SSHOptions.from_server_group(
+            "10.0.0.1", servers, secrets="", timeout=30.0)
+        assert opts.password == "mypassword"
+        assert opts.key_filename is None
+        assert opts.allow_agent is False
+        assert opts.look_for_keys is False
+
+    def test_no_credentials_enables_agent(self) -> None:
+        """When neither password nor pkey is set, SSHOptions enables agent/key discovery."""
+        servers = _make_servers(password=None, pkey=None)
+        opts = SSHOptions.from_server_group(
+            "10.0.0.1", servers, secrets="", timeout=30.0)
+        assert opts.allow_agent is True
+        assert opts.look_for_keys is True
+        assert opts.password is None
+
+    def test_secrets_used_as_password_when_no_credentials(self) -> None:
+        """When no credentials are set, secrets is used as password with agent enabled."""
+        servers = _make_servers(password=None, pkey=None)
+        opts = SSHOptions.from_server_group(
+            "10.0.0.1", servers, secrets="vault_token", timeout=30.0)
+        assert opts.password == "vault_token"
+        assert opts.allow_agent is True
+
+    def test_hostname_and_port_always_set(self) -> None:
+        """Hostname and port are always set correctly regardless of auth method."""
+        servers = _make_servers()
+        opts = SSHOptions.from_server_group(
+            "192.168.1.5", servers, secrets="", timeout=10.0)
+        assert opts.hostname == "192.168.1.5"
+        assert opts.port == servers.port
+        assert opts.timeout == 10.0

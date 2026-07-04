@@ -40,7 +40,7 @@
         "uv run ikctl --version imprime la versión correcta (sin 'v')",
         "uv build genera dist/*.whl y dist/*.tar.gz sin errores",
         "init.sh actualizado: usa 'uv run pytest' en lugar de 'python3 -m pytest'",
-        ".opencode/settings.json actualizado: permiso 'Bash(uv run pytest*)' en lugar de 'Bash(python3 -m pytest*)'"
+        ".claude/settings.json actualizado: permiso 'Bash(uv run pytest*)' en lugar de 'Bash(python3 -m pytest*)'"
       ],
       "status": "done",
       "type": "feature"
@@ -379,6 +379,215 @@
         "./init.sh termina con [OK] Entorno listo"
       ],
       "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 20,
+      "name": "bootstrap_cleanup",
+      "title": "Limpiar bootstrap: eliminar legados, resolver $HOME, placeholder seguro",
+      "description": "El bootstrap actual genera artefactos legacy o confusos: (1) crea ~/kits/ikctl.yaml con un índice de kits que el auto-discovery ignora, (2) usa el string literal \"$HOME/kits\" en defaults en lugar de resolver con pathlib.Path.home(), (3) usa \"$PASSWORD\" como placeholder que envyaml interpreta como variable de entorno. Corregir estos tres puntos.",
+      "acceptance": [
+        "bootstrap.py no crea ~/kits/ikctl.yaml (el índice legacy); si acaso crea un kit de ejemplo funcional",
+        "bootstrap.py usa str(pathlib.Path.home() / \"kits\") en lugar de \"$HOME/kits\" como default",
+        "El placeholder de password por defecto es \"CHANGE_ME\" en lugar de \"$PASSWORD\"",
+        "init.sh termina con [OK] Entorno listo",
+        "tests/test_bootstrap.py cubre los tres cambios"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 21,
+      "name": "fix_dependencies",
+      "title": "Eliminar dependencia redundante pyaml (duplicada con PyYAML)",
+      "description": "pyproject.toml lista tanto pyaml como PyYAML>=6.0 en [project].dependencies. pyaml ya trae PyYAML como dependencia transitiva. Mantener solo pyaml y eliminar PyYAML explícito. pyaml es más declarativo (yaml.dump con defaults legibles), por lo que es la que nos interesa conservar. No hay código que importe directamente PyYAML (yaml.load/dump) — todo pasa por pyaml o envyaml.",
+      "acceptance": [
+        "pyproject.toml ya no lista PyYAML en [project].dependencies (solo pyaml)",
+        "uv sync instala sin errores",
+        "uv run pytest tests -v pasa al 100%",
+        "No hay imports de yaml (PyYAML directo) en el código fuente que fallen tras eliminar la dependencia explícita",
+        "init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 22,
+      "name": "show_help_on_empty",
+      "title": "Mostrar --help cuando ikctl se ejecuta sin argumentos",
+      "description": "Actualmente ikctl sin argumentos (ikctl a secas) carga Config, construye el runner y sale sin output visible. Comportamiento esperado: si no se pasa ningún argumento accionable (--install, --pipeline, --describe, --list, --context, --version), mostrar el mensaje de ayuda (parser.print_help()) y salir con código 0. El usuario nuevo que teclea ikctl por primera vez ve la ayuda en lugar de silencio.",
+      "acceptance": [
+        "ikctl sin argumentos muestra el mensaje de ayuda de argparse y sale con exit code 0",
+        "ikctl --help sigue funcionando igual",
+        "ikctl --version sigue mostrando la versión",
+        "ikctl --install foo sigue ejecutando el kit normalmente",
+        "init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 24,
+      "name": "bootstrap_new_structure",
+      "title": "Bootstrap: nueva estructura de directorios y config completo comentado",
+      "description": "Mejorar ConfigBootstrap para que cree la estructura ~/kits/default/{kits,pipelines,servers} con ejemplos funcionales. El fichero ~/.ikctl/config debe incluir todas las opciones posibles del contexto: las no usadas comentadas, todas con un comentario corto que explique para qué sirven. Extraer los dicts de defaults a constantes de módulo.",
+      "acceptance": [
+        "bootstrap.py crea ~/kits/default/kits/example-kit/ikctl.yaml con un manifest de ejemplo funcional",
+        "bootstrap.py crea ~/kits/default/pipelines/example.yaml con una pipeline de ejemplo",
+        "bootstrap.py crea ~/kits/default/servers/config.yaml con el servidor de ejemplo",
+        "bootstrap.py crea ~/kits/default/servers/.secrets vacío",
+        "~/.ikctl/config incluye todos los campos del dataclass Context con un comentario corto por campo; los opcionales no usados aparecen comentados",
+        "Los dicts de defaults (_DEFAULT_SERVERS, config) son constantes de módulo, no variables locales",
+        "Los path_kits y path_servers del config generado apuntan a las nuevas rutas",
+        "El comportamiento idempotente y --force siguen funcionando (no crea si ya existe, sobreescribe con --force)",
+        "tests/test_bootstrap.py actualizado para cubrir la nueva estructura",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "sdd": true,
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 23,
+      "name": "init_command",
+      "title": "Comando --init: onboarding interactivo para nuevos usuarios",
+      "description": "Crear ikctl --init como experiencia guiada que explica los conceptos fundamentales (contextos, servidores, kits, pipelines) y genera una configuración funcional. Cada paso muestra el archivo que se crea y su propósito. Incluye un kit show-date de ejemplo, un grupo de servidores demo, y una pipeline example. El usuario sale del init sabiendo qué es cada pieza y cómo usarla.",
+      "acceptance": [
+        "ikctl --init inicia un asistente interactivo paso a paso (4 pasos)",
+        "Paso 1: explica y crea ~/.ikctl/config con contexto 'demo', path_kits, path_servers, path_pipelines, mode=local",
+        "Paso 2: explica y crea ~/.ikctl/servers/config.yaml con grupo 'demo-servers' apuntando a 127.0.0.1",
+        "Paso 3: explica y crea ~/kits/show-date/ikctl.yaml (manifiesto comentado) + date.sh funcional",
+        "Paso 4: explica y crea ~/.ikctl/pipelines/example.yaml (pipeline simple con un step)",
+        "ikctl --init --auto crea todo sin preguntar (non-interactive)",
+        "ikctl --init es idempotente: no sobrescribe archivos existentes a menos que se pase --force",
+        "Al finalizar, imprime un panel Resumen con la estructura creada y los comandos sugeridos para continuar",
+        "El directorio path_kits y path_servers están separados (~/kits/ y ~/.ikctl/servers/)",
+        "No se crea ~/kits/ikctl.yaml legacy (índice)",
+        "ikctl --init funciona aunque el bootstrap de Config() no se haya ejecutado",
+        "init.sh termina con [OK] Entorno listo",
+        "tests/test_init_command.py cubre: init interactivo, --auto, --force, idempotencia, estructura creada"
+      ],
+      "sdd": true,
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 25,
+      "name": "ssh_options_factory",
+      "title": "Mover lógica de selección de auth SSH a SSHOptions.from_server_group()",
+      "description": "La función _make_connection_factory() en main.py contiene la lógica de selección del método de autenticación SSH (pkey / password / agent). Esa lógica pertenece a SSHOptions (SRP). Extraerla a un classmethod SSHOptions.from_server_group() y simplificar main.py.",
+      "acceptance": [
+        "SSHOptions.from_server_group(host, servers, secrets, timeout) es un classmethod en ikctl/connection/options.py",
+        "from_server_group selecciona el método de auth: pkey → key_filename+password=None; password → solo password; ninguno → allow_agent=True+look_for_keys=True",
+        "_make_connection_factory() en main.py usa SSHOptions.from_server_group() y queda reducida a 3-4 líneas",
+        "El bloque if/elif/else de selección de credenciales desaparece de main.py",
+        "tests/test_ssh_auth_selection.py sigue pasando sin modificaciones (o se adapta para probar from_server_group directamente)",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "refactor"
+    },
+    {
+      "id": 26,
+      "name": "wizard_custom_paths",
+      "title": "Rutas personalizables en el wizard de init y descriptions dinámicas",
+      "description": "El wizard de --init siempre genera rutas fijas. El usuario debe poder especificar rutas personalizadas para kits, servers y pipelines. Además, las descripciones de cada step muestran rutas hardcodeadas que no reflejan la ruta real que se va a aplicar.",
+      "acceptance": [
+        "El wizard pregunta al usuario las rutas deseadas antes del Step 1, mostrando el valor por defecto de ScaffoldPaths.default() como sugerencia",
+        "Si el usuario pulsa Enter sin escribir nada, se usa la ruta por defecto",
+        "En modo --auto se usan las rutas por defecto sin preguntar",
+        "ScaffoldPaths se construye con las rutas elegidas por el usuario (no siempre con .default())",
+        "Las descripciones de cada step muestran la ruta real (desde self._scaffold.paths) en lugar de texto hardcodeado",
+        "Los tests existentes en test_init_command.py siguen pasando sin modificaciones",
+        "uv run pytest tests -v pasa sin errores"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 27,
+      "name": "ansible_style_output",
+      "title": "Salida estilo Ansible: sin barra de progreso, sin IP",
+      "description": "Reemplazar la barra de progreso de Rich y la IP del host por una salida limpia estilo Ansible. En modo normal se muestra el nombre del servidor (no la IP), el fichero que se sube y el paso que se ejecuta, con estado OK/FAILED al final de cada línea. La salida del host (stdout/stderr) solo se muestra con --debug.",
+      "acceptance": [
+        "La barra de progreso de Rich (Progress) se elimina del runner remoto",
+        "Cada UPLOAD muestra: '[<nombre_host>] UPLOAD <fichero>  OK' o '... FAILED'",
+        "Cada RUN muestra: '[<nombre_host>] RUN   <script>  OK' o '... FAILED'",
+        "Sin --debug no se imprime stdout ni stderr del host",
+        "Con --debug sí se imprime stdout/stderr del host",
+        "No se muestra la IP del host en la salida normal (se usa el nombre si está disponible, o el primer host del grupo)",
+        "El resumen final 'N hosts OK, M hosts FAILED' se mantiene",
+        "tests/test_remote_runner.py verifica el formato de las líneas de salida"
+      ],
+      "status": "done",
+      "sdd": true,
+      "type": "feature"
+    },
+    {
+      "id": 29,
+      "name": "fix_config_error_traceback",
+      "title": "Bug: ConfigError en load_config_file_servers muestra traceback crudo",
+      "description": "Cuando el fichero de servidores no existe o no puede leerse, load_config_file_servers() lanza ConfigError pero main.py no la captura en ese punto, resultando en un traceback crudo visible al usuario. El mismo problema existe para extract_secrets() y load_config_file_mode(). Hay que capturar ConfigError en main() y mostrar un mensaje claro + sys.exit(1).",
+      "acceptance": [
+        "ikctl -l servers con path_servers apuntando a un fichero inexistente imprime un mensaje de error claro (sin traceback) y sale con exit code 1",
+        "La llamada data.load_config_file_servers() en main() está envuelta en try/except ConfigError",
+        "tests/test_config_error_handling.py tiene un test que verifica: cuando load_config_file_servers lanza ConfigError, main() imprime el mensaje en stderr y sale con exit code 1 (sin traceback)",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 30,
+      "name": "fix_rsa_sha1_compat",
+      "title": "Bug: fallo de conexión SSH con servidores RSA legacy (ssh-rsa SHA-1)",
+      "description": "paramiko 3.x prefiere rsa-sha2-256/512 al conectar con claves RSA. Si el servidor solo soporta ssh-rsa (SHA-1), la conexión falla con 'Unable to agree on a pubkey algorithm'. SSHConnection._connect() debe detectar este caso y reintentar con disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']} para forzar ssh-rsa. El reintento debe loguearse via self._logger.info() (visible solo con --debug).",
+      "acceptance": [
+        "pyproject.toml restringe paramiko a '>=3.0,<4.0'; Paramiko 5.x eliminó SHA-1 de RSAKey.HASHES rompiendo la compatibilidad con servidores legacy",
+        "SSHConnection._connect() usa paramiko.Transport directamente (no SSHClient.connect()); esto permite controlar el handshake antes de la autenticación",
+        "paramiko.RSAKey.HASHES contiene 'ssh-rsa' (SHA-1) en la versión instalada — garantizado por el pin de versión",
+        "tests/test_ssh_connection.py cubre: conexión con servidor que anuncia solo 'ssh-rsa' en server-sig-algs → autenticación exitosa con clave RSA",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
+      "type": "bugfix"
+    },
+    {
+      "id": 28,
+      "name": "smart_upload",
+      "title": "Upload incremental: solo subir si el kit ha cambiado",
+      "description": "Antes de subir un fichero al host remoto, verificar si ya existe y si su contenido es idéntico (mediante checksum MD5/SHA256). Solo se sube si el fichero no existe o ha cambiado. Esto reduce el tiempo de ejecución y el tráfico SFTP en ejecuciones repetidas.",
+      "acceptance": [
+        "SftpTransfer calcula el checksum (MD5 o SHA256) del fichero local antes de subir",
+        "Si el fichero remoto existe, se obtiene su checksum via SFTP (exec_command con md5sum/sha256sum)",
+        "Si los checksums coinciden, el fichero no se sube y se muestra '[<host>] SKIP  <fichero>  (unchanged)'",
+        "Si el fichero remoto no existe o los checksums difieren, se sube normalmente",
+        "Con --force-upload se omite la verificación y se suben todos los ficheros siempre",
+        "tests/test_smart_upload.py cubre: fichero sin cambios (skip), fichero modificado (upload), fichero nuevo (upload), --force-upload (siempre sube)"
+      ],
+      "status": "pending",
+      "type": "feature",
+      "sdd": true
+    },
+    {
+      "id": 31,
+      "name": "strict_mode",
+      "title": "Flag --strict: ejecutar scripts con bash -eo pipefail",
+      "description": "Añadir --strict al CLI. Cuando está activo, ikctl lanza los scripts remotos con 'bash -eo pipefail' en lugar de 'bash'. Esto propaga como exit code 1 cualquier comando que falle dentro del script (-e) y cualquier fallo en una pipe (-o pipefail). Sin --strict el comportamiento es idéntico al actual.",
+      "acceptance": [
+        "main.py acepta --strict (flag booleano, default False)",
+        "RunOptions incluye strict: bool = False",
+        "_build_remote_command() usa 'bash -eo pipefail' cuando options.strict es True, 'bash' cuando es False",
+        "El flag funciona con y sin sudo",
+        "tests/test_strict_mode.py cubre: sin --strict el comando usa 'bash'; con --strict usa 'bash -eo pipefail'; combinación con sudo",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
       "type": "feature"
     }
   ]

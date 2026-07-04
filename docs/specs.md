@@ -8,7 +8,7 @@
 Cada feature nueva (`"sdd": true` en `feature_list.json`) tiene una carpeta
 dedicada en cuanto deja `pending`:
 
-```
+```bash
 specs/<feature-name>/
 ├── requirements.md   # QUÉ se necesita (EARS notation)
 ├── design.md         # CÓMO se construirá (decisiones técnicas)

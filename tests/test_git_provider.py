@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.config.git_provider import GitKitsProvider
 
 
@@ -139,8 +139,6 @@ def test_inject_token_into_https_url() -> None:
 
 def test_inject_token_ssh_url_unchanged_with_warning() -> None:
     """_inject_token() leaves SSH URLs unchanged and logs a warning."""
-    import logging
-
     provider = GitKitsProvider()
     url = "git@gitlab.com:company/repo.git"
     token = "my_secret_token"

@@ -16,11 +16,15 @@
 
 ## Estructura de módulos (target)
 
-```
+```bash
 ikctl/
 ├── main.py              # argparse — solo parsea y llama a Pipeline
 ├── pipeline.py          # Orquestador — depende de IRunner, no de clases concretas
+├── context.py           # Context: lee y escribe el contexto activo en ~/.ikctl/config
 ├── view.py              # Listados (--list)
+│
+├── init/
+│   └── wizard.py        # InitWizard: crea los 4 artefactos de configuración inicial (--init)
 ├── logs.py              # Colores ANSI para resultados finales
 │
 ├── config/
@@ -29,7 +33,8 @@ ikctl/
 │   ├── loader.py        # ConfigLoader: carga ~/.ikctl/config → IkctlConfig
 │   ├── bootstrap.py     # ConfigBootstrap: crea config inicial si no existe
 │   ├── kit_repo.py      # KitRepository.resolve(name) → KitPipeline
-│   └── server_repo.py   # ServerRepository.resolve(group) → ServerGroup
+│   ├── server_repo.py   # ServerRepository.resolve(group) → ServerGroup
+│   └── git_provider.py  # GitKitsProvider.ensure(repo, ref, token) → local_path (clone/pull)
 │
 ├── connection/
 │   ├── base.py          # IConnection (ABC): exec_command, open_sftp, close
@@ -44,16 +49,23 @@ ikctl/
 │   ├── remote.py        # RemoteExecutor(IExecutor): via IConnection.exec_command()
 │   └── local.py         # LocalExecutor(IExecutor): via subprocess.run()
 │
-└── runner/
-    ├── base.py          # IRunner (ABC): run(kit, servers, options) → list[RunResult]
-    ├── result.py        # @dataclass RunResult: host, success, stdout, stderr
-    ├── remote.py        # RemoteRunner(IRunner): SftpTransfer + RemoteExecutor por host
-    └── local.py         # LocalRunner(IRunner): LocalExecutor
+├── runner/
+│   ├── base.py          # IRunner (ABC): run(kit, servers, options) → list[RunResult]
+│   ├── result.py        # @dataclass RunResult: host, success, stdout, stderr
+│   ├── remote.py        # RemoteRunner(IRunner): SftpTransfer + RemoteExecutor por host
+│   ├── local.py         # LocalRunner(IRunner): LocalExecutor
+│   └── dry_run.py       # DryRunRunner(IRunner): acumula acciones previstas sin ejecutarlas (--dry-run)
+│
+└── orchestration/
+    ├── parser.py        # PipelineParser: lee YAML → PipelineDef + StepDef
+    ├── dag.py           # DAGResolver: ordena StepDef en waves usando el algoritmo de Kahn
+    ├── interpolator.py  # OutputInterpolator: extrae KEY=VALUE de stdout y resuelve {{ steps.<id>.<KEY> }}
+    └── runner.py        # OrchestrationRunner: ejecuta el DAG wave a wave con ThreadPoolExecutor
 ```
 
 ## Flujo de datos (target)
 
-```
+```bash
 usuario (args CLI)
     → main.py (argparse)
         → Pipeline(runner: IRunner, config: IkctlConfig)

@@ -1,7 +1,8 @@
 # AGENTS.md — Mapa de navegación para agentes de IA
 
-> El **punto de entrada** es `FIRST_AGENT.md`. Este archivo es un **mapa** del
-> repositorio. Lee solo lo que necesites cuando lo necesites (divulgación progresiva).
+> Este archivo es el **punto de entrada** para cualquier agente que trabaje en este
+> repositorio. NO es una biblia de reglas: es un **mapa**. Lee solo lo que
+> necesites cuando lo necesites (divulgación progresiva).
 
 ---
 
@@ -25,7 +26,7 @@
 | `docs/conventions.md`        | Reglas de estilo, nombres, estructura                     | Antes de escribir código |
 | `docs/verification.md`       | Cómo verificar que tu trabajo funciona                    | Antes de declarar una tarea como `done` |
 | `CHECKPOINTS.md`             | Criterios objetivos de "estado final correcto"            | Para auto-evaluarte |
-| `.opencode/agents/`          | Definiciones de subagentes (líder, implementador, revisor) | Si orquestas trabajo |
+| `.claude/agents/`            | Definiciones de subagentes (líder, implementador, revisor) | Si orquestas trabajo |
 | `ikctl/`                     | Código de la aplicación                                   | Para implementar |
 | `tests/`                     | Tests automáticos                                         | Para verificar |
 

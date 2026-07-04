@@ -4,9 +4,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import paramiko
-import pytest
 
-from ikctl.connection.base import IConnection
+from ikctl.connection.interface import IConnection
 from ikctl.transfer.sftp import SftpTransfer
 
 

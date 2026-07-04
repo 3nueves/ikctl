@@ -3,21 +3,30 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
+import pathlib
+import sys
 
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.panel import Panel
 
 from ikctl.config.config import Config, __version__
+from ikctl.exceptions import ConfigError, KitNotFoundError, RunnerError, ServerNotFoundError
+from ikctl.config.kit_repo import KitRepository
+from ikctl.config.loader import ConfigLoader
 from ikctl.config.models import ServerGroup
-from ikctl.connection.options import SSHOptions
+from ikctl.connection.models import SSHOptions
 from ikctl.connection.ssh import SSHConnection
 from ikctl.executor.local import LocalExecutor
+from ikctl.init.wizard import InitWizard
+from ikctl.orchestration.parser import PipelineParser
+from ikctl.orchestration.runner import OrchestrationRunner
 from ikctl.pipeline import Pipeline
-from ikctl.runner.base import IRunner
+from ikctl.runner.base import IRunner, RunOptions
 from ikctl.runner.dry_run import DryRunRunner
 from ikctl.runner.local import LocalRunner
-from ikctl.runner.remote import RemoteRunner
+from ikctl.runner.remote import RemoteRunner, _console as _runner_console
+from ikctl.view import Show
 
 _console = Console()
 
@@ -30,18 +39,15 @@ def _resolve_pipeline_path(pipeline_arg: str, path_pipelines: str | None) -> str
     2. If path_pipelines is set, search <path_pipelines>/<pipeline_arg>[.yaml].
     3. Otherwise raise ConfigError with a clear message.
     """
-    from ikctl.config.exceptions import ConfigError
-
-    if os.path.isfile(pipeline_arg):
+    if pathlib.Path(pipeline_arg).is_file():
         return pipeline_arg
 
     if path_pipelines is not None:
-        if pipeline_arg.endswith(".yaml") or pipeline_arg.endswith(".yml"):
-            candidate = os.path.join(path_pipelines, pipeline_arg)
-        else:
-            candidate = os.path.join(path_pipelines, pipeline_arg + ".yaml")
-        if os.path.isfile(candidate):
-            return candidate
+        name = pipeline_arg if pipeline_arg.endswith(
+            (".yaml", ".yml")) else pipeline_arg + ".yaml"
+        candidate = pathlib.Path(path_pipelines) / name
+        if candidate.is_file():
+            return str(candidate)
 
     raise ConfigError(
         f"Pipeline '{pipeline_arg}' not found. "
@@ -50,72 +56,41 @@ def _resolve_pipeline_path(pipeline_arg: str, path_pipelines: str | None) -> str
 
 
 def _make_connection_factory(
-    options: object,
     servers: ServerGroup,
     secrets: str,
     timeout_connect: float,
 ):
     """Return a connection factory for the given server group and options."""
     def connection_factory(host: str) -> SSHConnection:
-        if servers.pkey:
-            opts = SSHOptions(
-                hostname=host,
-                port=servers.port,
-                username=servers.user,
-                key_filename=servers.pkey,
-                password=None,
-                allow_agent=False,
-                look_for_keys=False,
-                timeout=timeout_connect,
-            )
-        elif servers.password != "no_pass":
-            opts = SSHOptions(
-                hostname=host,
-                port=servers.port,
-                username=servers.user,
-                password=servers.password,
-                key_filename=None,
-                allow_agent=False,
-                look_for_keys=False,
-                timeout=timeout_connect,
-            )
-        else:
-            opts = SSHOptions(
-                hostname=host,
-                port=servers.port,
-                username=servers.user,
-                password=secrets or None,
-                key_filename=None,
-                allow_agent=True,
-                look_for_keys=True,
-                timeout=timeout_connect,
-            )
+        opts = SSHOptions.from_server_group(
+            host, servers, secrets, timeout_connect)
         return SSHConnection(opts)
 
     return connection_factory
 
 
 def _build_runner(
-    options: object,
+    options: RunOptions,
     servers: ServerGroup,
     secrets: str,
     timeout_connect: float,
     timeout_exec: float,
+    config_mode: str | None = "remote",
 ) -> IRunner:
     """Construct and return the appropriate runner based on mode and flags."""
-    if getattr(options, "dry_run", False):
+
+    if options.dry_run:
         return DryRunRunner()
 
-    mode = options.mode if hasattr(
-        options, "mode") and options.mode else "remote"
+    mode = options.mode or config_mode
 
     if mode == "local":
         executor = LocalExecutor(timeout=timeout_exec)
         return LocalRunner(executor)
 
-    parallel_workers = getattr(options, "parallel_workers", 4) or 4
+    parallel_workers = options.parallel_workers or 4
     return RemoteRunner(
-        _make_connection_factory(options, servers, secrets, timeout_connect),
+        _make_connection_factory(servers, secrets, timeout_connect),
         max_workers=parallel_workers,
     )
 
@@ -141,7 +116,7 @@ def main() -> None:
     parser.add_argument(
         "-m", "--mode",
         choices=["local", "remote"],
-        default="remote",
+        default=None,
         help="Select mode",
     )
     parser.add_argument("-v", "--version", action="version")
@@ -177,6 +152,18 @@ def main() -> None:
         help="Enable verbose logging (paramiko and internal logs)",
     )
     parser.add_argument(
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Show script stdout output",
+    )
+    parser.add_argument(
+        "--stderr",
+        action="store_true",
+        default=False,
+        help="Show script stderr output on failure",
+    )
+    parser.add_argument(
         "--pipeline",
         help="Path to a pipeline YAML file for DAG-based orchestration",
     )
@@ -184,12 +171,54 @@ def main() -> None:
         "--describe",
         help="Show kit manifest and declared outputs",
     )
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        default=False,
+        help="Interactive onboarding wizard — creates config, servers, kit and pipeline examples",
+    )
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        default=False,
+        help="Used with --init: skip confirmation prompts (non-interactive mode)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Used with --init: overwrite existing files",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Run scripts with bash -eo pipefail (fail on any command error or pipe failure)",
+    )
     args = parser.parse_args()
+
+    _actionable = (args.install, args.pipeline, args.describe,
+                   args.list, args.context, args.init)
+    if not any(_actionable):
+        parser.print_help()
+        sys.exit(0)
+
+    if args.init:
+        wizard = InitWizard(auto=args.auto, force=args.force)
+        wizard.run()
+        sys.exit(0)
 
     if args.debug:
         logging.basicConfig(
             level=logging.INFO,
-            format="%(asctime)s - %(name)s - [%(levelname)s] - %(message)s",
+            format="%(name)s - %(message)s",
+            datefmt="[%X]",
+            handlers=[RichHandler(
+                console=_runner_console,
+                rich_tracebacks=False,
+                show_path=False,
+                show_time=True,
+            )],
         )
     else:
         logging.basicConfig(level=logging.WARNING)
@@ -197,11 +226,13 @@ def main() -> None:
         logging.getLogger("paramiko.transport").setLevel(logging.WARNING)
 
     data = Config()
-    config_servers, _ = data.load_config_file_servers()
+    try:
+        config_servers, _ = data.load_config_file_servers()
+    except ConfigError as exc:
+        print(f"\nError: {exc}\n", file=sys.stderr)
+        sys.exit(1)
     secrets, _ = data.extract_secrets()
-
-    from ikctl.config.exceptions import ServerNotFoundError
-    import sys
+    config_mode = data.load_config_file_mode()
 
     try:
         servers_dict = data.extract_config_servers(config_servers, args.name)
@@ -221,28 +252,19 @@ def main() -> None:
     timeout_exec = args.timeout_exec if args.timeout_exec is not None else data.load_timeout_exec()
 
     if args.pipeline:
-        from ikctl.config.loader import ConfigLoader
-        from ikctl.orchestration.parser import PipelineParser
-        from ikctl.orchestration.runner import OrchestrationRunner
-
         try:
-            from ikctl.config.exceptions import ConfigError
             loader = ConfigLoader(config_path=data.path_config_file)
             ikctl_config = loader.load()
             active_ctx = ikctl_config.contexts.get(ikctl_config.context)
             path_pipelines = active_ctx.path_pipelines if active_ctx else None
-            resolved_pipeline = _resolve_pipeline_path(args.pipeline, path_pipelines)
+            resolved_pipeline = _resolve_pipeline_path(
+                args.pipeline, path_pipelines)
         except ConfigError as exc:
-            import sys
             print(f"\nError: {exc}\n", file=sys.stderr)
-            sys.exit(1)
-        except Exception as exc:
-            import sys
-            print(f"\nError loading config: {exc}\n", file=sys.stderr)
             sys.exit(1)
 
         pipeline_def = PipelineParser().parse(resolved_pipeline)
-        mode = args.mode if hasattr(args, "mode") and args.mode else "remote"
+        mode = args.mode if hasattr(args, "mode") and args.mode else config_mode
 
         pipeline_params: dict[str, str] = {}
         if args.parameter:
@@ -257,20 +279,24 @@ def main() -> None:
 
         orch_runner = OrchestrationRunner(
             config=ikctl_config,
-            connection_factory=_make_connection_factory(args, servers, secrets, timeout_connect),
+            connection_factory=_make_connection_factory(
+                servers, secrets, timeout_connect),
             max_workers=getattr(args, "parallel_workers", 4) or 4,
             mode=mode,
             timeout_exec=timeout_exec,
         )
 
-        _console.print(f"\n[bold cyan]Pipeline: {pipeline_def.name}[/bold cyan]\n")
-        results = orch_runner.run(pipeline_def, args, pipeline_params=pipeline_params or None)
+        _console.print(
+            f"\n[bold cyan]Pipeline: {pipeline_def.name}[/bold cyan]\n")
+        results = orch_runner.run(
+            pipeline_def, args, pipeline_params=pipeline_params or None)
 
         for result in results:
             if result.status == "ok":
                 _console.print(f"  [green]✓ {result.id:<20}[/green]  ok")
             elif result.status == "skipped":
-                _console.print(f"  [yellow]⊘ {result.id:<20}[/yellow]  skipped")
+                _console.print(
+                    f"  [yellow]⊘ {result.id:<20}[/yellow]  skipped")
             else:
                 _console.print(f"  [red]✗ {result.id:<20}[/red]  failed")
 
@@ -284,18 +310,11 @@ def main() -> None:
         )
         _console.print(Panel(summary, expand=False))
 
-        import sys
         if any(r.status == "failed" for r in results):
             sys.exit(1)
         return
 
     if args.describe:
-        import sys
-        from ikctl.config.exceptions import KitNotFoundError
-        from ikctl.config.loader import ConfigLoader
-        from ikctl.config.kit_repo import KitRepository
-        from ikctl.view import Show
-
         try:
             loader = ConfigLoader(config_path=data.path_config_file)
             ikctl_config = loader.load()
@@ -303,9 +322,6 @@ def main() -> None:
             kit_pipeline = repo.resolve(args.describe)
         except KitNotFoundError as exc:
             print(f"\nError: {exc}\n", file=sys.stderr)
-            sys.exit(1)
-        except Exception as exc:
-            print(f"\nError loading kit: {exc}\n", file=sys.stderr)
             sys.exit(1)
 
         view = Show(
@@ -320,5 +336,28 @@ def main() -> None:
         view.show_kit_describe(args.describe, kit_pipeline)
         return
 
-    runner = _build_runner(args, servers, secrets, timeout_connect, timeout_exec)
-    Pipeline(runner=runner, options=args)
+    run_options = RunOptions(
+        parameter=args.parameter,
+        sudo=args.sudo,
+        install=args.install,
+        name=args.name,
+        mode=args.mode,
+        parallel_workers=getattr(args, "parallel_workers", None),
+        dry_run=getattr(args, "dry_run", False),
+        debug=getattr(args, "debug", False),
+        stdout_output=getattr(args, "stdout", False),
+        stderr_output=getattr(args, "stderr", False),
+        context=getattr(args, "context", None),
+        list=getattr(args, "list", None),
+        strict=getattr(args, "strict", False),
+    )
+    runner = _build_runner(run_options, servers, secrets,
+                           timeout_connect, timeout_exec, config_mode)
+    try:
+        Pipeline(runner=runner, options=run_options)
+    except KeyboardInterrupt:
+        print("\nInterrumpido por el usuario.\n", file=sys.stderr)
+        sys.exit(130)
+    except RunnerError as exc:
+        print(f"\nError: {exc}\n", file=sys.stderr)
+        sys.exit(1)

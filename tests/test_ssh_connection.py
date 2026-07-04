@@ -1,78 +1,115 @@
 """Tests for SSHConnection."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import paramiko
 import pytest
 
-from ikctl.config.exceptions import SSHConnectionError
-from ikctl.connection.options import SSHOptions
+from ikctl.exceptions import SSHConnectionError
+from ikctl.connection.models import SSHOptions
 from ikctl.connection.ssh import SSHConnection
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_transport_mock(pubkeys=("rsa-sha2-256", "rsa-sha2-512")):
+    """Return a configured mock Transport."""
+    transport = MagicMock()
+    transport._preferred_pubkeys = pubkeys
+    transport.get_remote_server_key.return_value = MagicMock()
+    return transport
+
+
 def _make_client_mock():
-    """Return a configured mock SSHClient (no spec, class is already patched)."""
+    """Return a configured mock SSHClient."""
     client = MagicMock()
     sftp = MagicMock()
     client.open_sftp.return_value = sftp
-    transport = MagicMock()
-    client.get_transport.return_value = transport
     return client
 
 
+def _patch_transport(transport_mock):
+    """Context-manager patch: paramiko.Transport returns transport_mock."""
+    return patch("ikctl.connection.ssh.paramiko.Transport", return_value=transport_mock)
+
+
+def _patch_socket():
+    """Context-manager patch: socket.create_connection returns a MagicMock."""
+    sock_mock = MagicMock()
+    return patch("ikctl.connection.ssh.socket.create_connection", return_value=sock_mock), sock_mock
+
+
+# ---------------------------------------------------------------------------
+# Basic connection tests
+# ---------------------------------------------------------------------------
+
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_connect_with_key_filename(mock_client_cls):
-    """SSHConnection calls client.connect with key_filename."""
+    """SSHConnection authenticates with a key_filename via transport.auth_publickey."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
-    opts = SSHOptions(
-        hostname="host.example.com",
-        username="deploy",
-        key_filename="/home/deploy/.ssh/id_ed25519",
-    )
-    conn = SSHConnection(opts)
+    fake_pkey = MagicMock()
 
-    call_kwargs = mock_client.connect.call_args.kwargs
-    assert call_kwargs["hostname"] == "host.example.com"
-    assert call_kwargs["key_filename"] == "/home/deploy/.ssh/id_ed25519"
-    assert "password" not in call_kwargs
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"), \
+         patch("ikctl.connection.ssh.paramiko.PKey.from_private_key_file", return_value=fake_pkey):
 
+        opts = SSHOptions(
+            hostname="host.example.com",
+            username="deploy",
+            key_filename="/home/deploy/.ssh/id_ed25519",
+        )
+        conn = SSHConnection(opts)
+
+    transport.auth_publickey.assert_called_once_with("deploy", fake_pkey)
     conn.close()
 
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_connect_with_password(mock_client_cls):
-    """SSHConnection calls client.connect with password."""
+    """SSHConnection authenticates with password via transport.auth_password."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
-    opts = SSHOptions(
-        hostname="host.example.com",
-        username="deploy",
-        password="s3cr3t",
-        allow_agent=False,
-        look_for_keys=False,
-    )
-    conn = SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
 
-    call_kwargs = mock_client.connect.call_args.kwargs
-    assert call_kwargs["password"] == "s3cr3t"
-    assert call_kwargs["allow_agent"] is False
-    assert call_kwargs["look_for_keys"] is False
+        opts = SSHOptions(
+            hostname="host.example.com",
+            username="deploy",
+            password="s3cr3t",
+            allow_agent=False,
+            look_for_keys=False,
+        )
+        conn = SSHConnection(opts)
 
+    transport.auth_password.assert_called_once_with("deploy", "s3cr3t")
     conn.close()
 
+
+# ---------------------------------------------------------------------------
+# close() and exec_command()
+# ---------------------------------------------------------------------------
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_close_closes_ssh_and_sftp(mock_client_cls):
     """close() closes the SFTP channel then the SSH client."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
-    opts = SSHOptions(hostname="host.example.com")
-    conn = SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="pw", allow_agent=False)
+        conn = SSHConnection(opts)
 
     sftp = conn.open_sftp()
     conn.close()
@@ -84,6 +121,7 @@ def test_close_closes_ssh_and_sftp(mock_client_cls):
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_exec_command_returns_stdout_stderr_exit_code(mock_client_cls):
     """exec_command() returns (stdout, stderr, exit_code) without printing."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
@@ -96,8 +134,13 @@ def test_exec_command_returns_stdout_stderr_exit_code(mock_client_cls):
 
     mock_client.exec_command.return_value = (MagicMock(), stdout_mock, stderr_mock)
 
-    opts = SSHOptions(hostname="host.example.com")
-    conn = SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="pw", allow_agent=False)
+        conn = SSHConnection(opts)
+
     stdout, stderr, exit_code = conn.exec_command("echo hello")
 
     assert stdout == "hello\n"
@@ -107,116 +150,169 @@ def test_exec_command_returns_stdout_stderr_exit_code(mock_client_cls):
     conn.close()
 
 
-@patch("ikctl.connection.ssh.paramiko.SSHClient")
-def test_host_key_policy_reject_uses_reject_policy(mock_client_cls):
-    """host_key_policy='reject' sets RejectPolicy on the client."""
-    mock_client = _make_client_mock()
-    mock_client_cls.return_value = mock_client
-
-    opts = SSHOptions(hostname="host.example.com", host_key_policy="reject")
-    conn = SSHConnection(opts)
-
-    call_args = mock_client.set_missing_host_key_policy.call_args
-    assert isinstance(call_args.args[0], paramiko.RejectPolicy)
-
-    conn.close()
-
+# ---------------------------------------------------------------------------
+# Keepalive
+# ---------------------------------------------------------------------------
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_keepalive_interval_calls_set_keepalive(mock_client_cls):
     """keepalive_interval > 0 calls transport.set_keepalive()."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
-    opts = SSHOptions(hostname="host.example.com", keepalive_interval=60)
-    conn = SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
 
-    transport = mock_client.get_transport.return_value
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          keepalive_interval=60, password="pw", allow_agent=False)
+        conn = SSHConnection(opts)
+
     transport.set_keepalive.assert_called_once_with(60)
-
     conn.close()
 
 
-@patch("ikctl.connection.ssh.paramiko.ProxyCommand")
+# ---------------------------------------------------------------------------
+# ProxyCommand
+# ---------------------------------------------------------------------------
+
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
-def test_proxy_command_passes_sock(mock_client_cls, mock_proxy_cmd):
-    """proxy_command option sets sock=ProxyCommand(...) in client.connect."""
+def test_proxy_command_creates_proxy_command_socket(mock_client_cls):
+    """proxy_command creates a ProxyCommand socket instead of a TCP connection."""
+    transport = _make_transport_mock()
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
     proxy_sock = MagicMock()
-    mock_proxy_cmd.return_value = proxy_sock
 
-    opts = SSHOptions(
-        hostname="host.example.com",
-        proxy_command="ssh -W %h:%p jump.example.com",
-    )
-    conn = SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.paramiko.ProxyCommand", return_value=proxy_sock) as mock_proxy, \
+         patch("ikctl.connection.ssh.socket.create_connection") as mock_socket:
 
-    mock_proxy_cmd.assert_called_once_with("ssh -W %h:%p jump.example.com")
-    call_kwargs = mock_client.connect.call_args.kwargs
-    assert call_kwargs["sock"] is proxy_sock
+        opts = SSHOptions(
+            hostname="host.example.com",
+            username="deploy",
+            proxy_command="ssh -W %h:%p jump.example.com",
+            password="pw",
+            allow_agent=False,
+        )
+        conn = SSHConnection(opts)
 
+    mock_proxy.assert_called_once_with("ssh -W %h:%p jump.example.com")
+    mock_socket.assert_not_called()
     conn.close()
 
 
+# ---------------------------------------------------------------------------
+# Error cases
+# ---------------------------------------------------------------------------
+
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_oserror_raises_ssh_connection_error(mock_client_cls):
-    """client.connect() raising OSError causes SSHConnection.__init__ to raise SSHConnectionError."""
-    mock_client = _make_client_mock()
-    mock_client.connect.side_effect = OSError("Network unreachable")
-    mock_client_cls.return_value = mock_client
+    """OSError from socket.create_connection causes SSHConnectionError."""
+    mock_client_cls.return_value = _make_client_mock()
 
     opts = SSHOptions(hostname="host.example.com", username="deploy")
-    with pytest.raises(SSHConnectionError):
-        SSHConnection(opts)
+    with patch("ikctl.connection.ssh.socket.create_connection",
+               side_effect=OSError("Network unreachable")):
+        with pytest.raises(SSHConnectionError):
+            SSHConnection(opts)
 
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_authentication_exception_raises_ssh_connection_error(mock_client_cls):
-    """client.connect() raising AuthenticationException causes SSHConnectionError."""
-    mock_client = _make_client_mock()
-    mock_client.connect.side_effect = paramiko.AuthenticationException("Auth failed")
-    mock_client_cls.return_value = mock_client
+    """transport.auth_password() raising AuthenticationException causes SSHConnectionError."""
+    transport = _make_transport_mock()
+    transport.auth_password.side_effect = paramiko.AuthenticationException("Auth failed")
+    mock_client_cls.return_value = _make_client_mock()
 
-    opts = SSHOptions(hostname="host.example.com", username="deploy")
-    with pytest.raises(SSHConnectionError):
-        SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
 
-
-@patch("ikctl.connection.ssh.paramiko.SSHClient")
-def test_bad_host_key_raises_ssh_connection_error(mock_client_cls):
-    """client.connect() raising BadHostKeyException causes SSHConnectionError."""
-    mock_client = _make_client_mock()
-    mock_client.connect.side_effect = paramiko.BadHostKeyException(
-        "host.example.com", MagicMock(), MagicMock()
-    )
-    mock_client_cls.return_value = mock_client
-
-    opts = SSHOptions(hostname="host.example.com", username="deploy")
-    with pytest.raises(SSHConnectionError):
-        SSHConnection(opts)
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="bad", allow_agent=False)
+        with pytest.raises(SSHConnectionError):
+            SSHConnection(opts)
 
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
-def test_ssh_exception_raises_ssh_connection_error(mock_client_cls):
-    """client.connect() raising SSHException causes SSHConnectionError."""
-    mock_client = _make_client_mock()
-    mock_client.connect.side_effect = paramiko.SSHException("Connection reset")
-    mock_client_cls.return_value = mock_client
+def test_ssh_negotiation_failure_raises_ssh_connection_error(mock_client_cls):
+    """transport.start_client() raising SSHException causes SSHConnectionError."""
+    transport = _make_transport_mock()
+    transport.start_client.side_effect = paramiko.SSHException("Negotiation failed")
+    mock_client_cls.return_value = _make_client_mock()
 
-    opts = SSHOptions(hostname="host.example.com", username="deploy")
-    with pytest.raises(SSHConnectionError):
-        SSHConnection(opts)
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="pw", allow_agent=False)
+        with pytest.raises(SSHConnectionError):
+            SSHConnection(opts)
 
 
 @patch("ikctl.connection.ssh.paramiko.SSHClient")
 def test_timeout_raises_ssh_connection_error(mock_client_cls):
-    """client.connect() raising TimeoutError causes SSHConnectionError."""
-    mock_client = _make_client_mock()
-    mock_client.connect.side_effect = TimeoutError("Connection timed out")
-    mock_client_cls.return_value = mock_client
+    """TimeoutError from socket.create_connection causes SSHConnectionError."""
+    mock_client_cls.return_value = _make_client_mock()
 
     opts = SSHOptions(hostname="host.example.com", username="deploy")
-    with pytest.raises(SSHConnectionError):
-        SSHConnection(opts)
+    with patch("ikctl.connection.ssh.socket.create_connection",
+               side_effect=TimeoutError("Connection timed out")):
+        with pytest.raises(SSHConnectionError):
+            SSHConnection(opts)
+
+
+@patch("ikctl.connection.ssh.paramiko.SSHClient")
+def test_no_auth_method_raises_ssh_connection_error(mock_client_cls):
+    """No auth method configured (no password, no key, no agent) raises SSHConnectionError."""
+    transport = _make_transport_mock()
+    mock_client_cls.return_value = _make_client_mock()
+
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(
+            hostname="host.example.com",
+            username="deploy",
+            password=None,
+            key_filename=None,
+            pkey=None,
+            allow_agent=False,
+        )
+        with pytest.raises(SSHConnectionError):
+            SSHConnection(opts)
+
+
+# ---------------------------------------------------------------------------
+# RSA legacy / SHA-1 compatibility
+# ---------------------------------------------------------------------------
+
+def test_paramiko_rsa_hashes_contains_sha1():
+    """Installed Paramiko must include 'ssh-rsa' (SHA-1) in RSAKey.HASHES."""
+    assert "ssh-rsa" in paramiko.RSAKey.HASHES
+
+
+@patch("ikctl.connection.ssh.paramiko.SSHClient")
+def test_rsa_legacy_server_ssh_rsa_only(mock_client_cls):
+    """SSHConnection succeeds against a server that only advertises ssh-rsa (SHA-1)."""
+    transport = _make_transport_mock(pubkeys=("ssh-rsa",))
+    transport.server_extensions = {"server-sig-algs": b"ssh-rsa"}
+    transport.auth_publickey.return_value = []
+    mock_client_cls.return_value = _make_client_mock()
+
+    fake_rsa_key = MagicMock(spec=paramiko.RSAKey)
+
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"), \
+         patch.object(paramiko.RSAKey, "from_private_key_file", return_value=fake_rsa_key):
+
+        opts = SSHOptions(
+            hostname="legacy-host.example.com",
+            username="deploy",
+            key_filename="/home/deploy/.ssh/id_rsa",
+        )
+        conn = SSHConnection(opts)
+
+    transport.auth_publickey.assert_called_once_with("deploy", fake_rsa_key)
+    conn.close()

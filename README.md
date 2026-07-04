@@ -45,6 +45,14 @@ uv tool install ikctl
 pip install ikctl --break-system-packages
 ```
 
+**With the install script** (pip --user + automatic PATH fix for bash/zsh):
+```bash
+curl -fsSL https://raw.githubusercontent.com/3nueves/ikctl/main/install.sh | bash
+# or, after cloning:
+bash install.sh
+```
+The script installs ikctl with `pip install --user` and appends `~/.local/bin` to your shell's rc file if it is not already on `PATH`.
+
 **From source:**
 ```bash
 git clone <repo>

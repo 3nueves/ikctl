@@ -7,7 +7,7 @@ import pytest
 
 from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.runner.local import LocalRunner
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import RunOptions
 
 
 @pytest.fixture()
@@ -25,7 +25,7 @@ def test_run_executes_all_pipeline_steps(kit_two_steps, servers):
     executor.execute.return_value = ("ok\n", "", 0)
     runner = LocalRunner(executor)
 
-    results = runner.run(kit_two_steps, servers, object())
+    results = runner.run(kit_two_steps, servers, RunOptions())
 
     assert len(results) == 1
     assert results[0].host == "local"
@@ -42,7 +42,7 @@ def test_run_stops_on_first_failure(servers):
     kit = KitPipeline(uploads=[], pipeline=["fail.sh", "should_not_run.sh"])
     runner = LocalRunner(executor)
 
-    results = runner.run(kit, servers, object())
+    results = runner.run(kit, servers, RunOptions())
 
     assert results[0].success is False
     assert executor.execute.call_count == 1
@@ -53,7 +53,7 @@ def test_run_with_empty_pipeline_returns_success(servers):
     kit = KitPipeline(uploads=[], pipeline=[])
     runner = LocalRunner(executor)
 
-    results = runner.run(kit, servers, object())
+    results = runner.run(kit, servers, RunOptions())
 
     assert results[0].host == "local"
     assert results[0].success is True

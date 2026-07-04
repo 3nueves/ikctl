@@ -6,7 +6,7 @@ import pathlib
 import pytest
 import yaml
 
-from ikctl.config.exceptions import ServerNotFoundError
+from ikctl.exceptions import ServerNotFoundError
 from ikctl.config.models import Context, IkctlConfig, ServerGroup
 from ikctl.config.server_repo import ServerRepository
 

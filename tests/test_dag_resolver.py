@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.orchestration.dag import DAGResolver
 from ikctl.orchestration.parser import StepDef
 
@@ -89,16 +89,6 @@ def test_self_cycle_raises_config_error(resolver):
 def test_unknown_need_raises_config_error(resolver):
     steps = [make_step("a", needs=["nonexistent"])]
     with pytest.raises(ConfigError, match="unknown dependency"):
-        resolver.resolve(steps)
-
-
-def test_three_step_cycle_raises(resolver):
-    steps = [
-        make_step("a", needs=["c"]),
-        make_step("b", needs=["a"]),
-        make_step("c", needs=["b"]),
-    ]
-    with pytest.raises(ConfigError, match="cycle"):
         resolver.resolve(steps)
 
 

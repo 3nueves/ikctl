@@ -8,14 +8,15 @@ import pytest
 
 from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.runner.dry_run import DryRunRunner, _censor
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import RunOptions, RunResult
 
 
 @pytest.fixture()
 def kit():
     return KitPipeline(
         uploads=["/home/user/kits/mykit/deploy.sh"],
-        pipeline=["/home/user/kits/mykit/deploy.sh", "/home/user/kits/mykit/service.sh"],
+        pipeline=["/home/user/kits/mykit/deploy.sh",
+                  "/home/user/kits/mykit/service.sh"],
     )
 
 
@@ -31,7 +32,7 @@ def single_server():
 
 def test_dry_run_runner_returns_run_result_list(kit, servers):
     runner = DryRunRunner()
-    results = runner.run(kit, servers, object())
+    results = runner.run(kit, servers, RunOptions())
 
     assert isinstance(results, list)
     assert len(results) == 2
@@ -39,7 +40,7 @@ def test_dry_run_runner_returns_run_result_list(kit, servers):
 
 def test_dry_run_runner_returns_success_true_for_each_host(kit, servers):
     runner = DryRunRunner()
-    results = runner.run(kit, servers, object())
+    results = runner.run(kit, servers, RunOptions())
 
     for result in results:
         assert isinstance(result, RunResult)
@@ -48,7 +49,7 @@ def test_dry_run_runner_returns_success_true_for_each_host(kit, servers):
 
 def test_dry_run_runner_prints_upload_paths(kit, single_server):
     runner = DryRunRunner()
-    results = runner.run(kit, single_server, object())
+    results = runner.run(kit, single_server, RunOptions())
 
     combined = "\n".join(r.stdout for r in results)
     assert "[DRY RUN] UPLOAD:" in combined
@@ -59,7 +60,7 @@ def test_dry_run_runner_prints_upload_paths(kit, single_server):
 
 def test_dry_run_runner_prints_exec_for_each_pipeline_step(kit, single_server):
     runner = DryRunRunner()
-    results = runner.run(kit, single_server, object())
+    results = runner.run(kit, single_server, RunOptions())
 
     combined = "\n".join(r.stdout for r in results)
     assert "[DRY RUN] EXEC:" in combined
@@ -78,7 +79,7 @@ def test_dry_run_runner_censors_passwords_in_commands(kit, single_server):
 def test_dry_run_runner_does_not_instantiate_ssh_connection(kit, single_server):
     with patch("ikctl.connection.ssh.SSHConnection") as MockSSH:
         runner = DryRunRunner()
-        runner.run(kit, single_server, object())
+        runner.run(kit, single_server, RunOptions())
 
         MockSSH.assert_not_called()
 
@@ -86,14 +87,14 @@ def test_dry_run_runner_does_not_instantiate_ssh_connection(kit, single_server):
 def test_dry_run_runner_does_not_instantiate_sftp_transfer(kit, single_server):
     with patch("ikctl.transfer.sftp.SftpTransfer") as MockSftp:
         runner = DryRunRunner()
-        runner.run(kit, single_server, object())
+        runner.run(kit, single_server, RunOptions())
 
         MockSftp.assert_not_called()
 
 
 def test_dry_run_runner_prints_host_line_for_each_host(kit, servers):
     runner = DryRunRunner()
-    results = runner.run(kit, servers, object())
+    results = runner.run(kit, servers, RunOptions())
 
     hosts_in_stdout = [r.stdout for r in results]
     assert any("10.0.0.1" in s for s in hosts_in_stdout)
@@ -120,7 +121,8 @@ def test_build_runner_returns_dry_run_runner_when_flag_set():
     options = SimpleNamespace(dry_run=True, mode="remote")
     servers = ServerGroup(user="admin", port=22, hosts=["10.0.0.1"])
 
-    runner = _build_runner(options, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+    runner = _build_runner(options, servers, secrets="",
+                           timeout_connect=30.0, timeout_exec=120.0)
     assert isinstance(runner, DRR)
 
 
@@ -132,5 +134,6 @@ def test_build_runner_returns_dry_run_runner_regardless_of_mode():
     options = SimpleNamespace(dry_run=True, mode="local")
     servers = ServerGroup(user="admin", port=22, hosts=["10.0.0.1"])
 
-    runner = _build_runner(options, servers, secrets="", timeout_connect=30.0, timeout_exec=120.0)
+    runner = _build_runner(options, servers, secrets="",
+                           timeout_connect=30.0, timeout_exec=120.0)
     assert isinstance(runner, DRR)

@@ -7,8 +7,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ikctl.logs import Log
-
 
 def test_without_debug_paramiko_logger_at_warning() -> None:
     """Without --debug, paramiko logger level should be WARNING or higher."""
@@ -44,59 +42,15 @@ def test_with_debug_root_logger_at_info() -> None:
         root_logger.setLevel(original_level)
 
 
-def test_log_stdout_check_zero_prints_success(capsys: pytest.CaptureFixture) -> None:
-    """Log.stdout() with check=0 prints something containing 'successfully'."""
-    Log().stdout(check=0)
-    captured = capsys.readouterr()
-    assert "successfully" in captured.out.lower() or "End task successfully" in captured.out
-
-
-def test_log_stdout_check_nonzero_prints_errors(capsys: pytest.CaptureFixture) -> None:
-    """Log.stdout() with check=1 prints something containing 'errors' to stderr."""
-    Log().stdout(check=1)
-    captured = capsys.readouterr()
-    assert "errors" in captured.err.lower() or "End task with errors" in captured.err
-
-
 # --- Rich output tests for feature 11 ---
 
-def test_run_on_host_prints_connecting_message() -> None:
-    """_run_on_host prints a 'Connecting to <host>' message via Rich console."""
-    from ikctl.config.models import KitPipeline, ServerGroup
-    from ikctl.runner.remote import RemoteRunner
-
-    output = StringIO()
-
-    from rich.console import Console as RichConsole
-    test_console = RichConsole(file=output, highlight=False, no_color=True)
-
-    kit = KitPipeline(uploads=[], pipeline=[])
-    servers = ServerGroup(user="admin", port=22, hosts=["testhost"])
-    options = object()
-
-    conn = MagicMock()
-    conn.exec_command.return_value = ("", "", 0)
-
-    runner = RemoteRunner(connection_factory=lambda host: conn)
-
-    with patch("ikctl.runner.remote._console", test_console):
-        with patch("ikctl.runner.remote.SftpTransfer"):
-            with patch("ikctl.runner.remote.RemoteExecutor"):
-                try:
-                    runner._run_on_host("testhost", kit, servers, options)
-                except Exception:
-                    pass
-
-    written = output.getvalue()
-    assert "Connecting" in written or "testhost" in written
-
-
-def test_run_on_host_uses_progress_for_uploads() -> None:
-    """_run_on_host uses rich.progress.Progress when uploading files."""
+def test_run_on_host_upload_prints_ok_line() -> None:
+    """_run_on_host prints a '[host] UPLOAD  <fname>  OK' line for each uploaded file."""
     import os
     import tempfile
 
     from ikctl.config.models import KitPipeline, ServerGroup
+    from ikctl.runner.base import RunOptions
     from ikctl.runner.remote import RemoteRunner
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".sh") as tmp:
@@ -112,37 +66,35 @@ def test_run_on_host_uses_progress_for_uploads() -> None:
 
         kit = KitPipeline(uploads=[script_path], pipeline=[])
         servers = ServerGroup(user="admin", port=22, hosts=["testhost2"])
-        options = object()
+        options = RunOptions(debug=True)
 
         conn = MagicMock()
         conn.exec_command.return_value = ("", "", 0)
 
-        progress_calls: list[str] = []
-
-        original_progress_init = __import__(
-            "rich.progress", fromlist=["Progress"]
-        ).Progress.__init__
-
         runner = RemoteRunner(connection_factory=lambda host: conn)
 
-        with patch("ikctl.runner.remote.Progress") as MockProgress:
-            mock_progress_instance = MagicMock()
-            mock_progress_instance.__enter__ = MagicMock(return_value=mock_progress_instance)
-            mock_progress_instance.__exit__ = MagicMock(return_value=False)
-            mock_progress_instance.add_task.return_value = 0
-            MockProgress.return_value = mock_progress_instance
+        progress_mock = MagicMock()
+        progress_mock.console = MagicMock()
+        progress_mock.console.print = MagicMock()
+        progress_mock.add_task.return_value = 0
 
-            with patch("ikctl.runner.remote.SftpTransfer") as MockSftp:
-                sftp_instance = MagicMock()
-                sftp_instance.list_dir.return_value = []
-                MockSftp.return_value = sftp_instance
+        with patch("ikctl.runner.remote.SftpTransfer") as MockSftp:
+            sftp_instance = MagicMock()
+            sftp_instance.list_dir.return_value = []
+            MockSftp.return_value = sftp_instance
 
-                with patch("ikctl.runner.remote.RemoteExecutor"):
-                    runner._run_on_host("testhost2", kit, servers, options)
+            with patch("ikctl.runner.remote.RemoteExecutor"):
+                runner._run_on_host("testhost2", kit, servers, options, progress_mock)
 
-            MockProgress.assert_called_once()
-            mock_progress_instance.add_task.assert_called_once()
-            mock_progress_instance.update.assert_called_once()
+        printed_args = [
+            str(c[0][0])
+            for c in progress_mock.console.print.call_args_list
+            if c[0]
+        ]
+        written = "\n".join(printed_args)
+        assert "UPLOAD" in written
+        assert "OK" in written
+        assert "script.sh" in written
     finally:
         import shutil
         if os.path.isdir(kit_dir):

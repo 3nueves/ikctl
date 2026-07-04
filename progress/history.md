@@ -12,7 +12,7 @@
 - Cambiado `__version__ = "v0.6.4"` a `__version__ = "0.6.4"` en `ikctl/config/config.py`.
 - Eliminados `setup.py`, `Pipfile` y `Pipfile.lock`.
 - Actualizado `init.sh`: `uv run pytest` en lugar de `python3 -m pytest`.
-- Actualizado `.opencode/settings.json`: permiso `Bash(uv run pytest*)` en lugar de `Bash(python3 -m pytest*)`.
+- Actualizado `.claude/settings.json`: permiso `Bash(uv run pytest*)` en lugar de `Bash(python3 -m pytest*)`.
 - `.gitignore` ya tenia `.venv` y `uv.lock` no estaba ignorado — sin cambios necesarios.
 - `uv sync` instaló el entorno correctamente, `uv run ikctl --version` devuelve `0.6.4`.
 - `uv build` genera `dist/ikctl-0.6.4.tar.gz` y `dist/ikctl-0.6.4-py3-none-any.whl`.
@@ -462,3 +462,33 @@
 - `feature_list.json` — status de feature 19 cambiado a `in_progress`.
 
 ### Estado: pendiente de revision humana
+
+---
+
+## Sesion 2026-06-12 — Feature 27: ansible_style_output
+
+### Resumen
+
+Implementación de salida estilo Ansible en el runner remoto de ikctl.
+La barra de progreso Rich fue reemplazada por líneas simples con formato
+`[<host>] UPLOAD  <fichero>  OK/FAILED` y `[<host>] RUN     <script>  OK/FAILED`.
+El stdout/stderr del host solo se imprime con `--debug`.
+
+### Archivos modificados
+
+- `ikctl/runner/base.py` — campo `debug: bool = False` añadido a `RunOptions`
+- `ikctl/runner/remote.py` — eliminados imports Rich Progress; nuevo bucle UPLOAD y bloque RUN con formato Ansible; soporte `options.debug`
+- `ikctl/main.py` — `debug=getattr(args, "debug", False)` pasado a `RunOptions`
+- `tests/test_remote_runner.py` — 5 tests nuevos: upload_ok, run_ok, run_failed, no_stdout_without_debug, stdout_with_debug
+- `tests/test_output_mode.py` — test `test_run_on_host_uses_progress_for_uploads` reemplazado por `test_run_on_host_upload_prints_ok_line`
+
+### Resultado de tests
+
+270 passed (265 previos + 5 nuevos), 1 warning preexistente. Reviewer: APROBADO.
+
+### Observacion del reviewer
+
+RF-4 parcialmente satisfecho: el label usa el IP/hostname (no un nombre legible).
+Documentado en design.md como decisión consciente; añadir nombres por host es feature futura.
+
+### Estado: pendiente de aprobacion humana

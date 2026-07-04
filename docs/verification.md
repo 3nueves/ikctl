@@ -13,6 +13,7 @@ Toda función pública en `ikctl/` tiene al menos un test en `tests/` que cubre:
 2. Al menos un camino de error si la función puede fallar.
 
 Comando:
+
 ```bash
 uv run pytest tests -v
 ```

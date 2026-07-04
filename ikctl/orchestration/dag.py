@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from collections import deque
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.orchestration.parser import StepDef
 
 

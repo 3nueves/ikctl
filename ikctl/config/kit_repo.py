@@ -6,7 +6,8 @@ import pathlib
 
 from envyaml import EnvYAML
 
-from ikctl.config.exceptions import KitNotFoundError
+from ikctl.exceptions import KitNotFoundError
+from ikctl.config.git_provider import GitKitsProvider
 from ikctl.config.models import IkctlConfig, KitPipeline
 
 
@@ -21,7 +22,6 @@ class KitRepository:
         """Returns the effective path_kits, cloning/pulling from git if kits_repo is set."""
         context = self._config.contexts[self._config.context]
         if context.kits_repo:
-            from ikctl.config.git_provider import GitKitsProvider
             return GitKitsProvider().ensure(context.kits_repo, context.kits_ref, context.kits_token)
         return context.path_kits
 
@@ -53,7 +53,8 @@ class KitRepository:
         path_kits = pathlib.Path(self._resolve_path_kits())
 
         if not path_kits.is_dir():
-            raise KitNotFoundError(f"Kit '{name}' not found: path_kits '{path_kits}' does not exist")
+            raise KitNotFoundError(
+                f"Kit '{name}' not found: path_kits '{path_kits}' does not exist")
 
         manifests = self._discover_manifests(path_kits, context.exclude)
 
@@ -78,7 +79,8 @@ class KitRepository:
                 ]
 
                 raw_outputs = kit_config["kits"].get("outputs", {}) or {}
-                outputs: dict[str, str] = {str(k): str(v) for k, v in raw_outputs.items()}
+                outputs: dict[str, str] = {str(k): str(
+                    v) for k, v in raw_outputs.items()}
 
                 self._logger.debug(
                     "Resolved kit '%s': %d uploads, %d pipeline steps, %d outputs",
@@ -87,6 +89,6 @@ class KitRepository:
                     len(pipeline),
                     len(outputs),
                 )
-                return KitPipeline(uploads=uploads, pipeline=pipeline, outputs=outputs)
+                return KitPipeline(uploads=uploads, pipeline=pipeline, outputs=outputs, name=name)
 
         raise KitNotFoundError(f"Kit '{name}' not found under '{path_kits}'")

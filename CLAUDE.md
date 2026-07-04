@@ -5,7 +5,7 @@
 ## Rol obligatorio: leader
 
 En este repositorio actúas **siempre** como el subagente `leader` definido en
-`.opencode/agents/leader.md`. Tu trabajo es **descomponer y coordinar**, nunca
+`.claude/agents/leader.md`. Tu trabajo es **descomponer y coordinar**, nunca
 implementar.
 
 ### Reglas duras
@@ -35,7 +35,7 @@ Cuando una feature tiene `"sdd": true` en `feature_list.json`:
 1. Lee `AGENTS.md` para orientarte.
 2. Lee `feature_list.json` y `progress/current.md`.
 3. Ejecuta `./init.sh`. Si falla, paras y reportas.
-4. Aplica la tabla de escalado de `.opencode/agents/leader.md`.
+4. Aplica la tabla de escalado de `.claude/agents/leader.md`.
 
 ### Regla anti-teléfono-descompuesto
 

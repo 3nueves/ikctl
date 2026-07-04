@@ -20,3 +20,7 @@ class ServerNotFoundError(IkctlError):
 
 class SSHConnectionError(IkctlError):
     """Raised when an SSH connection cannot be established."""
+
+
+class RunnerError(IkctlError):
+    """Raised when an unexpected error occurs during kit execution."""

@@ -7,8 +7,7 @@ import re
 from pathlib import Path
 
 from ikctl.config.models import KitPipeline, ServerGroup
-from ikctl.runner.base import IRunner
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import IRunner, RunOptions, RunResult
 
 
 def _censor(command: str) -> str:
@@ -16,20 +15,19 @@ def _censor(command: str) -> str:
     return re.sub(r"echo\s+\S+\s*\|", "echo *** |", command)
 
 
-def _build_preview_command(script_path: str, options: object) -> str:
+def _build_preview_command(script_path: str, options: RunOptions) -> str:
     """Build the command preview string showing sudo and parameters."""
     script = os.path.basename(script_path)
-    params = " ".join(options.parameter) if getattr(options, "parameter", None) else ""
-    sudo = getattr(options, "sudo", None)
+    params = " ".join(options.parameter) if options.parameter else ""
+    sudo = options.sudo
 
     if sudo and params:
         return f"echo *** | sudo -S bash {script} {params}"
-    elif sudo:
+    if sudo:
         return f"echo *** | sudo -S bash {script}"
-    elif params:
+    if params:
         return f"bash {script} {params}"
-    else:
-        return f"bash {script}"
+    return f"bash {script}"
 
 
 class DryRunRunner(IRunner):
@@ -38,7 +36,7 @@ class DryRunRunner(IRunner):
     def __init__(self) -> None:
         self._logger = logging.getLogger(__name__)
 
-    def run(self, kit: KitPipeline, servers: ServerGroup, options: object) -> list[RunResult]:
+    def run(self, kit: KitPipeline, servers: ServerGroup, options: RunOptions) -> list[RunResult]:
         """Return RunResults whose stdout contains the preview lines for each host."""
         results: list[RunResult] = []
         for host in servers.hosts:
@@ -47,6 +45,8 @@ class DryRunRunner(IRunner):
                 remote = f".ikctl/{Path(upload).parent.name}/{Path(upload).name}"
                 lines.append(f"[DRY RUN] UPLOAD: {upload} → {remote}")
             for cmd in kit.pipeline:
-                lines.append(f"[DRY RUN] EXEC: {_censor(_build_preview_command(cmd, options))}")
-            results.append(RunResult(host=host, success=True, stdout="\n".join(lines), stderr=""))
+                lines.append(
+                    f"[DRY RUN] EXEC: {_censor(_build_preview_command(cmd, options))}")
+            results.append(RunResult(host=host, success=True,
+                           stdout="\n".join(lines), stderr=""))
         return results

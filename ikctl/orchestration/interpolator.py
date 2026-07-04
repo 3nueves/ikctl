@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import re
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 
 _STEPS_PATTERN = re.compile(r"\{\{\s*steps\.([^.}]+)\.([^}]+?)\s*\}\}")
 _PARAMS_PATTERN = re.compile(r"\{\{\s*params\.(\w+)\s*\}\}")

@@ -6,7 +6,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
-from ikctl.config.exceptions import ConfigError, KitNotFoundError, ServerNotFoundError
+from ikctl.exceptions import ConfigError, KitNotFoundError, ServerNotFoundError
 from ikctl.config.kit_repo import KitRepository
 from ikctl.config.models import IkctlConfig
 from ikctl.config.server_repo import ServerRepository

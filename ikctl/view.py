@@ -81,7 +81,7 @@ class Show:
                 hosts = ", ".join(server.get("hosts", [])) if isinstance(server.get("hosts"), list) else str(server.get("hosts", ""))
                 port = str(server.get("port", ""))
                 password = server.get("password", "")
-                auth = "***" if password and password != "no_pass" else "key/agent"
+                auth = "***" if password and password not in (None, "") else "key/agent"
                 table.add_row(name, user, hosts, port, auth)
             _console.print(table)
         elif conf == "pipelines":

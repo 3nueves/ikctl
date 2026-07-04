@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from ikctl.connection.base import IConnection
+from ikctl.connection.interface import IConnection
 
 
 class SftpTransfer:

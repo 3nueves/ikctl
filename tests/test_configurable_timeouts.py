@@ -1,13 +1,7 @@
 """Tests for configurable_timeouts feature: CLI > config > default precedence."""
 from __future__ import annotations
 
-import argparse
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from ikctl.config.models import Context, IkctlConfig
-from ikctl.connection.options import SSHOptions
 from ikctl.executor.local import LocalExecutor
 
 
@@ -74,25 +68,6 @@ class TestTimeoutResolution:
         timeout_connect, timeout_exec = _resolve_timeouts(None, None, config)
         assert timeout_connect == DEFAULT_CONNECT
         assert timeout_exec == DEFAULT_EXEC
-
-
-class TestSSHOptionsReceivesResolvedTimeout:
-    """SSHOptions is built with the resolved timeout_connect value."""
-
-    def test_ssh_options_timeout_set_from_cli(self) -> None:
-        """SSHOptions.timeout reflects the CLI-provided timeout_connect."""
-        opts = SSHOptions(
-            hostname="10.0.0.1",
-            port=22,
-            username="admin",
-            timeout=60.0,
-        )
-        assert opts.timeout == 60.0
-
-    def test_ssh_options_default_timeout(self) -> None:
-        """SSHOptions.timeout defaults to 30.0 when not specified."""
-        opts = SSHOptions(hostname="10.0.0.1", username="admin")
-        assert opts.timeout == DEFAULT_CONNECT
 
 
 class TestLocalExecutorReceivesResolvedTimeout:

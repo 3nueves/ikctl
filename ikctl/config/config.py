@@ -8,11 +8,12 @@ import sys
 from envyaml import EnvYAML
 
 from ikctl.config.bootstrap import ConfigBootstrap
-from ikctl.config.exceptions import ConfigError, KitNotFoundError, ServerNotFoundError
+from ikctl.exceptions import ConfigError, KitNotFoundError, ServerNotFoundError
 from ikctl.config.kit_repo import KitRepository
 from ikctl.config.loader import ConfigLoader
+from ikctl.config.models import KitPipeline
 
-__version__ = "1.1.2"
+__version__ = "1.5.4"
 
 _logger = logging.getLogger(__name__)
 
@@ -87,12 +88,8 @@ class Config:
 
         try:
             return EnvYAML(path_servers + "/config.yaml", strict=False), path_servers
-        except ValueError as exc:
-            print(f"\n--- {exc} ---\n", file=sys.stderr)
-            sys.exit(1)
         except Exception as exc:
-            print(f"\n[ikctl - servers config] {exc}\n", file=sys.stderr)
-            sys.exit(1)
+            raise ConfigError(f"[ikctl - servers config] {exc}") from exc
 
     def extract_config_servers(self, config: object, group: str | None = None) -> dict:
         """Extracts a ServerGroup dict from the raw servers config.
@@ -102,14 +99,14 @@ class Config:
         hosts: list[str] = []
         user = "root"
         port = 22
-        password = "no_pass"
+        password: str | None = None
         pkey = None
 
         for entry in config["servers"]:
             if group == entry["name"] or group is None:
                 user = entry.get("user", "root")
                 port = entry.get("port", 22)
-                password = entry.get("password", "no_pass")
+                password = entry.get("password") or None
                 pkey = entry.get("pkey", None)
                 if entry.get("hosts"):
                     hosts = list(entry["hosts"])
@@ -145,7 +142,6 @@ class Config:
 
     def load_kit_pipelines(self) -> dict:
         """Returns a dict mapping kit name to KitPipeline for the active context."""
-        from ikctl.config.models import KitPipeline
         repo = KitRepository(self._ikctl_config)
         kit_names = repo.list_kits()
         result: dict[str, KitPipeline] = {}

@@ -11,8 +11,10 @@ class ServerGroup:
     user: str
     port: int
     hosts: list[str]
-    password: str = "no_pass"
+    password: str | None = None
     pkey: str | None = None
+    proxy_command: str | None = None
+    host_key_policy: str = "auto_add"
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,7 @@ class KitPipeline:
     uploads: list[str]
     pipeline: list[str]
     outputs: dict[str, str] = field(default_factory=dict)
+    name: str = ""
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,7 @@ class Context:
     kits_ref: str = "main"
     kits_token: str | None = None
     path_pipelines: str | None = None
+    path_remote_kits: str = "~/ikctl"
 
 
 @dataclass(frozen=True)

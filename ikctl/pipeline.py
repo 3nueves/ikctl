@@ -7,12 +7,11 @@ import sys
 from rich.console import Console
 
 from ikctl.config.config import Config
-from ikctl.config.exceptions import KitNotFoundError, ServerNotFoundError
+from ikctl.exceptions import KitNotFoundError, ServerNotFoundError
 from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.context import Context
 from ikctl.logs import Log
-from ikctl.runner.base import IRunner
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import IRunner, RunOptions, RunResult
 from ikctl.view import Show
 
 _console = Console()
@@ -22,7 +21,7 @@ _error_console = Console(stderr=True)
 class Pipeline:
     """Orchestrates the process of installing kits on remote or local servers."""
 
-    def __init__(self, runner: IRunner, options: object) -> None:
+    def __init__(self, runner: IRunner, options: RunOptions) -> None:
         """Initialise Pipeline with an already-constructed runner and parsed options."""
         self._logger = logging.getLogger(__name__)
         self._runner = runner
@@ -51,7 +50,8 @@ class Pipeline:
         )
 
         try:
-            servers_dict = self.data.extract_config_servers(self.config_servers, self.options.name)
+            servers_dict = self.data.extract_config_servers(
+                self.config_servers, self.options.name)
         except ServerNotFoundError as exc:
             print(f"\nError: {exc}\n", file=sys.stderr)
             sys.exit(1)
@@ -64,35 +64,18 @@ class Pipeline:
             pkey=servers_dict.get("pkey"),
         )
 
-        self._kit: KitPipeline | None = None
-        if options.install:
-            try:
-                uploads, pipeline_steps = self.data.extract_config_kits(self.config_kits, self.options.install)
-            except KitNotFoundError as exc:
-                print(f"\nError: {exc}\n", file=sys.stderr)
-                sys.exit(1)
-
-            self._kit = KitPipeline(uploads=uploads, pipeline=pipeline_steps)
-
         self._run()
 
     def _print_results(self, results: list[RunResult]) -> None:
-        """Print run results using Rich and a summary line."""
-        for result in results:
-            if result.stdout:
-                for line in result.stdout.splitlines():
-                    _console.print(f"[cyan]{line}[/cyan]")
-            if result.stderr:
-                for line in result.stderr.splitlines():
-                    _error_console.print(f"[red]{line}[/red]")
-            self.log.stdout(None, None, 0 if result.success else 1)
-
+        """Print a summary line and exit with error if any host failed."""
         ok_count = sum(1 for r in results if r.success)
         failed_count = sum(1 for r in results if not r.success)
         if failed_count == 0:
-            _console.print(f"\n[bold green]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold green]")
+            _console.print(
+                f"\n[bold green]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold green]")
         else:
-            _console.print(f"\n[bold red]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold red]")
+            _console.print(
+                f"\n[bold red]{ok_count} hosts OK, {failed_count} hosts FAILED[/bold red]")
 
         if not all(r.success for r in results):
             sys.exit(1)
@@ -106,5 +89,12 @@ class Pipeline:
             self.view.show_config(self.options.list)
 
         if self.options.install:
-            results = self._runner.run(self._kit, self.servers, self.options)
+            try:
+                uploads, pipeline_steps = self.data.extract_config_kits(
+                    self.config_kits, self.options.install)
+            except KitNotFoundError as exc:
+                print(f"\nError: {exc}\n", file=sys.stderr)
+                sys.exit(1)
+            kit = KitPipeline(uploads=uploads, pipeline=pipeline_steps)
+            results = self._runner.run(kit, self.servers, self.options)
             self._print_results(results)

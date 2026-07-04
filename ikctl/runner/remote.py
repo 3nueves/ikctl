@@ -7,34 +7,32 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 from rich.console import Console
-from rich.live import Live
-from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
-from rich.spinner import Spinner
+from rich.markup import escape as _escape_markup
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from ikctl.config.exceptions import KitNotFoundError, SSHConnectionError
+from ikctl.exceptions import KitNotFoundError, RunnerError, SSHConnectionError
 from ikctl.config.models import KitPipeline, ServerGroup
-from ikctl.connection.base import IConnection
+from ikctl.connection.interface import IConnection
 from ikctl.executor.remote import RemoteExecutor
-from ikctl.runner.base import IRunner
-from ikctl.runner.result import RunResult
+from ikctl.runner.base import IRunner, RunOptions, RunResult
 from ikctl.transfer.sftp import SftpTransfer
 
-_console = Console(stderr=False, highlight=False)
+_console = Console(highlight=False)
 
 
-def _build_remote_command(remote_dir: str, script: str, options: object, password: str) -> str:
+def _build_remote_command(remote_dir: str, script: str, options: RunOptions, password: str) -> str:
     """Build the remote bash command using the remote directory where the script was uploaded."""
-    params = " ".join(options.parameter) if getattr(options, "parameter", None) else ""
-    sudo = getattr(options, "sudo", None)
+    params = " ".join(options.parameter) if options.parameter else ""
+    sudo = options.sudo
+    bash = "bash -eo pipefail" if options.strict else "bash"
 
     if sudo and params:
-        return f"cd {remote_dir}; echo {password} | sudo -S bash {script} {params}"
-    elif sudo:
-        return f"cd {remote_dir}; echo {password} | sudo -S bash {script}"
-    elif params:
-        return f"cd {remote_dir}; bash {script} {params}"
-    else:
-        return f"cd {remote_dir}; bash {script}"
+        return f"cd {remote_dir}; echo {password or ''} | sudo -S {bash} {script} {params}"
+    if sudo:
+        return f"cd {remote_dir}; echo {password or ''} | sudo -S {bash} {script}"
+    if params:
+        return f"cd {remote_dir}; {bash} {script} {params}"
+    return f"cd {remote_dir}; {bash} {script}"
 
 
 class RemoteRunner(IRunner):
@@ -54,26 +52,49 @@ class RemoteRunner(IRunner):
         self._max_workers = max_workers
         self._logger = logging.getLogger(__name__)
 
-    def run(self, kit: KitPipeline, servers: ServerGroup, options: object) -> list[RunResult]:
+    def run(self, kit: KitPipeline, servers: ServerGroup, options: RunOptions) -> list[RunResult]:
         """Execute the kit on every host in servers concurrently. Returns one RunResult per host."""
         if not kit.uploads and not kit.pipeline:
             raise KitNotFoundError("Kit has no uploads and no pipeline steps.")
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as pool:
-            results = list(pool.map(
-                lambda host: self._run_on_host(host, kit, servers, options),
-                servers.hosts,
-            ))
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            console=_console,
+            transient=False,
+            disable=options.debug,
+        )
+        try:
+            with progress:
+                with ThreadPoolExecutor(max_workers=self._max_workers) as pool:
+                    results = list(pool.map(
+                        lambda host: self._run_on_host(
+                            host, kit, servers, options, progress),
+                        servers.hosts,
+                    ))
+        except KeyboardInterrupt:
+            self._logger.warning("Interrupted by user")
+            raise
 
         return results
 
-    def _run_on_host(self, host: str, kit: KitPipeline, servers: ServerGroup, options: object) -> RunResult:
+    def _run_on_host(
+        self,
+        host: str,
+        kit: KitPipeline,
+        servers: ServerGroup,
+        options: RunOptions,
+        progress: Progress,
+    ) -> RunResult:
         """Execute the kit on a single host. Returns a RunResult with prefixed stdout lines."""
         self._logger.info("Starting on host: %s", host)
         conn = None
+        label = f"[{_escape_markup(host)}]"
+        task_id = progress.add_task(
+            f"[dim][bold cyan]{label}[/bold cyan] connecting...[/dim]", total=None
+        )
         try:
-            with Live(Spinner("dots", text=f"Connecting to {host}..."), console=_console, transient=False, refresh_per_second=10):
-                conn = self._connection_factory(host)
+            conn = self._connection_factory(host)
             sftp = SftpTransfer(conn)
             executor = RemoteExecutor(conn)
 
@@ -82,59 +103,82 @@ class RemoteRunner(IRunner):
             success = True
 
             # Upload all kit files
-            with Progress(
-                TextColumn("[cyan]{task.description}"),
-                BarColumn(),
-                TextColumn("{task.percentage:>3.0f}%"),
-                TimeElapsedColumn(),
-                transient=True,
-                console=_console,
-            ) as progress:
-                for local_path in kit.uploads:
-                    kit_name = os.path.basename(os.path.dirname(local_path))
-                    remote_dir = f".ikctl/{kit_name}"
-                    remote_path = f"{remote_dir}/{os.path.basename(local_path)}"
+            for local_path in kit.uploads:
+                remote_dir = f".ikctl/{kit.name}"
+                remote_path = f"{remote_dir}/{os.path.basename(local_path)}"
 
-                    # Ensure remote directory exists
-                    existing = sftp.list_dir(".ikctl") if ".ikctl" in sftp.list_dir() else []
-                    if kit_name not in existing:
-                        try:
-                            sftp.create_dir(".ikctl")
-                        except OSError:
-                            pass
-                        try:
-                            sftp.create_dir(remote_dir)
-                        except OSError:
-                            pass
-
+                # Ensure remote directory exists
+                existing = sftp.list_dir(
+                    ".ikctl") if ".ikctl" in sftp.list_dir() else []
+                if kit.name not in existing:
                     try:
-                        file_size = os.path.getsize(local_path)
+                        sftp.create_dir(".ikctl")
                     except OSError:
-                        file_size = 1
-                    task = progress.add_task(
-                        f"Uploading {os.path.basename(local_path)} to {host}",
-                        total=file_size,
-                    )
-                    upload_line = f"UPLOAD: {local_path} -> {remote_path}"
-                    self._logger.info(upload_line)
+                        pass
+                    try:
+                        sftp.create_dir(remote_dir)
+                    except OSError:
+                        pass
+
+                fname = os.path.basename(local_path)
+                progress.update(
+                    task_id,
+                    description=f"[dim][bold cyan]{label}[/bold cyan] UPLOAD  {_escape_markup(fname)}...[/dim]",
+                )
+                self._logger.info("UPLOAD: %s -> %s", local_path, remote_path)
+                try:
                     sftp.upload(local_path, remote_path)
-                    progress.update(task, completed=file_size)
-                    all_stdout.append(f"[{host}] {upload_line}")
+                    if options.debug:
+                        progress.console.print(
+                            f"[bold cyan]{label}[/bold cyan] UPLOAD  {_escape_markup(fname):<40} [bold green]OK[/bold green]"
+                        )
+                except Exception:
+                    if options.debug:
+                        progress.console.print(
+                            f"[bold cyan]{label}[/bold cyan] UPLOAD  {_escape_markup(fname):<40} [bold red]FAILED[/bold red]"
+                        )
+                    raise
 
             # Execute all pipeline steps
-            password = servers.password if hasattr(servers, "password") else "no_pass"
+            password = servers.password if hasattr(
+                servers, "password") else None
             for cmd in kit.pipeline:
-                kit_name = os.path.basename(os.path.dirname(cmd))
-                remote_dir = f".ikctl/{kit_name}"
+                remote_dir = f".ikctl/{kit.name}"
                 script = os.path.basename(cmd)
-                full_cmd = _build_remote_command(remote_dir, script, options, password)
+                full_cmd = _build_remote_command(
+                    remote_dir, script, options, password)
+
+                progress.update(
+                    task_id,
+                    description=f"[dim][bold cyan]{label}[/bold cyan] RUN     {_escape_markup(script)}...[/dim]",
+                )
                 stdout, stderr, exit_code = executor.execute(full_cmd)
-                for line in stdout.splitlines():
-                    all_stdout.append(f"[{host}] {line}")
+
+                status_markup = "[bold green]OK[/bold green]" if exit_code == 0 else "[bold red]FAILED[/bold red]"
+                progress.console.print(
+                    f"[bold cyan]{label}[/bold cyan] RUN     {_escape_markup(script):<40} {status_markup}"
+                )
+
+                # Show stderr on failure only when --stderr flag is set
+                if exit_code != 0 and options.stderr_output:
+                    for line in stderr.splitlines():
+                        progress.console.print(
+                            f"[red]{_escape_markup(line)}[/red]")
+
+                # Show stdout only with --stdout flag
+                if options.stdout_output:
+                    for line in stdout.splitlines():
+                        progress.console.print(
+                            f"[cyan]{label}[/cyan] {_escape_markup(line)}"
+                        )
+
+                all_stdout.extend(stdout.splitlines())
                 all_stderr.extend(stderr.splitlines())
+
                 if exit_code != 0:
                     success = False
-                    self._logger.error("Step failed (exit %d): %s", exit_code, stderr)
+                    self._logger.debug(
+                        "Step failed (exit %d): %s", exit_code, stderr)
                     break
 
             return RunResult(
@@ -146,12 +190,15 @@ class RemoteRunner(IRunner):
 
         except (SSHConnectionError, OSError, RuntimeError) as exc:
             self._logger.error("Failed on host %s: %s", host, exc)
-            return RunResult(
-                host=host,
-                success=False,
-                stdout="",
-                stderr=str(exc),
+            progress.console.print(
+                f"[bold cyan]{label}[/bold cyan] [bold red]FAILED[/bold red] {_escape_markup(str(exc))}"
             )
+            return RunResult(host=host, success=False, stdout="", stderr=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            self._logger.error("Unexpected error on host %s: %s", host, exc)
+            raise RunnerError(
+                f"Unexpected error on host {host}: {exc}") from exc
         finally:
+            progress.remove_task(task_id)
             if conn is not None:
                 conn.close()

@@ -6,7 +6,7 @@ import tempfile
 
 import pytest
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.main import _resolve_pipeline_path
 
 

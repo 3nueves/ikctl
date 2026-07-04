@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.orchestration.interpolator import OutputInterpolator
 
 

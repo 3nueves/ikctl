@@ -6,7 +6,7 @@ import pathlib
 import pytest
 import yaml
 
-from ikctl.config.exceptions import ConfigError
+from ikctl.exceptions import ConfigError
 from ikctl.config.loader import ConfigLoader
 from ikctl.config.models import IkctlConfig
 
