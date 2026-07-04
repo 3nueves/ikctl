@@ -1,0 +1,4 @@
+kits:
+- forwarder.env
+- sonic_forwarder
+- install-sonic.sh

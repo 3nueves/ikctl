@@ -1,0 +1,33 @@
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: mantainer
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["create", "get", "update", "list", "delete", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "update", "list", "delete", "patch"]
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: read-only
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: watcher
+rules:
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["*"]

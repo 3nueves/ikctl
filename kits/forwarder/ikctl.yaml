@@ -1,0 +1,9 @@
+kits:
+- forwarder.conf
+  #- cacert.pem
+  #- client-cert.pem
+  #- client-key.pem
+  #- server-cert.pem
+  #- server-key.pem
+- install-forwarder.sh
+# - install-telegraf.sh
