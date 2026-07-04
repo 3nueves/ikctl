@@ -8,6 +8,7 @@
           {
             "type": "command",
             "command": "python3 -m unittest discover -s tests -q 2>&1 | tail -3",
+            "command": "[ -d tests ] && uv run pytest tests -q 2>&1 | tail -3 || echo '[harness] tests/ no existe todavía'",
             "description": "Tras editar o escribir archivos, corre los tests y muestra el resumen."
           }
         ]
@@ -29,7 +30,9 @@
     "allow": [
       "Bash(./init.sh)",
       "Bash(python3 -m unittest*)",
-      "Bash(python3 -m src.cli*)"
+      "Bash(python3 -m src.cli*)",
+      "Bash(uv run pytest*)",
+      "Bash(python3 -m ikctl*)"
     ]
   }
 }

@@ -48,51 +48,76 @@ for f in AGENTS.md feature_list.json progress/current.md docs/architecture.md do
 done
 
 echo ""
-echo "── 3. Validando feature_list.json y specs ─────────────"
+echo "── 3. Validando feature_list.json ──────────────────────"
 
 python3 - <<'PY'
-import json, os, sys
+import json, sys
 try:
     data = json.load(open("feature_list.json"))
-    valid = {"pending", "spec_ready", "in_progress", "done", "blocked"}
+    valid_status = {"pending", "in_progress", "done", "blocked"}
+    valid_types  = {"feature", "bugfix", "refactor"}
+    errors = []
     in_progress = [f for f in data["features"] if f["status"] == "in_progress"]
     if len(in_progress) > 1:
-        print(f"[FAIL]  Hay {len(in_progress)} features en in_progress (máximo 1)")
-        sys.exit(1)
-    requires_spec = {"spec_ready", "in_progress", "done"}
-    spec_errors = []
+        errors.append(f"Hay {len(in_progress)} features en in_progress (máximo 1)")
     for f in data["features"]:
-        if f["status"] not in valid:
-            print(f"[FAIL]  Estado inválido en feature {f['id']}: {f['status']}")
-            sys.exit(1)
-        if f.get("sdd") and f["status"] in requires_spec:
-            spec_dir = os.path.join("specs", f["name"])
-            for fname in ("requirements.md", "design.md", "tasks.md"):
-                if not os.path.isfile(os.path.join(spec_dir, fname)):
-                    spec_errors.append(
-                        f"feature {f['id']} ({f['name']}) en {f['status']} "
-                        f"sin {spec_dir}/{fname}"
-                    )
-    if spec_errors:
-        for e in spec_errors:
-            print(f"[FAIL]  {e}")
+        if f["status"] not in valid_status:
+            errors.append(f"Estado inválido en feature {f['id']}: {f['status']}")
+        if "type" not in f:
+            errors.append(f"Feature {f['id']} ({f['name']}) sin campo 'type'")
+        elif f["type"] not in valid_types:
+            errors.append(f"Tipo inválido en feature {f['id']}: {f['type']}")
+    if errors:
+        for e in errors: print(f"[FAIL]  {e}")
         sys.exit(1)
     print(f"[OK]    feature_list.json válido ({len(data['features'])} features)")
-    print(f"[OK]    Specs presentes para features sdd con estado no-pending")
-except SystemExit:
-    raise
 except Exception as e:
-    print(f"[FAIL]  feature_list.json o specs inválidos: {e}")
+    print(f"[FAIL]  feature_list.json inválido: {e}")
     sys.exit(1)
 PY
 
 if [ $? -ne 0 ]; then EXIT_CODE=1; fi
 
 echo ""
-echo "── 4. Ejecutando tests ─────────────────────────────────"
+echo "── 4. Validando specs SDD ──────────────────────────────"
+
+python3 - <<'PY'
+import json, sys, os
+data = json.load(open("feature_list.json"))
+errors = []
+warnings = []
+for f in data["features"]:
+    if not f.get("sdd"):
+        continue
+    specs_dir = f"specs/{f['name']}"
+    required = ["requirements.md", "design.md", "tasks.md"]
+    if f["status"] == "in_progress":
+        for doc in required:
+            if not os.path.isfile(f"{specs_dir}/{doc}"):
+                errors.append(f"  [{f['id']}] {f['name']}: falta {specs_dir}/{doc}")
+    elif f["status"] == "pending":
+        if not os.path.isdir(specs_dir):
+            warnings.append(f"  [{f['id']}] {f['name']}: specs/ no creada aún (pendiente)")
+if errors:
+    for e in errors: print(f"[FAIL]  Feature in_progress con sdd=true sin specs: {e}")
+    sys.exit(1)
+for w in warnings: print(f"[WARN]  {w}")
+if not errors and not warnings:
+    print("[OK]    Specs SDD presentes o no requeridas")
+elif not errors:
+    print("[OK]    Specs SDD: sin bloqueos (warnings solo)")
+PY
+
+if [ $? -ne 0 ]; then EXIT_CODE=1; fi
+
+echo ""
+echo "── 5. Ejecutando tests ─────────────────────────────────"
 
 if [ -d "tests" ]; then
-  if python3 -m unittest discover -s tests -v 2>&1; then
+  TEST_FILES=$(find tests -name "test_*.py" | wc -l | tr -d ' ')
+  if [ "$TEST_FILES" -eq 0 ]; then
+    warn "Carpeta tests/ existe pero no hay archivos test_*.py todavía"
+  elif uv run pytest tests -v 2>&1; then
     ok "Todos los tests pasan"
   else
     fail "Hay tests rotos"
@@ -103,7 +128,7 @@ else
 fi
 
 echo ""
-echo "── 5. Resumen ──────────────────────────────────────────"
+echo "── 6. Resumen ──────────────────────────────────────────"
 
 if [ $EXIT_CODE -eq 0 ]; then
   ok "Entorno listo. Puedes empezar a trabajar."

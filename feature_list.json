@@ -1,167 +1,594 @@
 {
-  "project": "notes-cli",
-  "description": "CLI minimalista de notas en Python. Sirve como ejemplo didáctico de Harness Engineering.",
+  "project": "ikctl",
+  "description": "CLI tool for deploying software to remote and local servers via SSH/SFTP.",
   "rules": {
     "one_feature_at_a_time": true,
     "require_tests_to_close": true,
-    "require_approved_spec_to_implement": true,
-    "valid_status": ["pending", "spec_ready", "in_progress", "done", "blocked"],
-    "sdd_required_when": "feature has \"sdd\": true"
+    "valid_status": [
+      "pending",
+      "in_progress",
+      "done",
+      "blocked"
+    ],
+    "valid_types": [
+      "feature",
+      "bugfix",
+      "refactor"
+    ],
+    "sdd_note": "Features con 'sdd': true requieren specs/<name>/ con requirements.md, design.md y tasks.md antes de implementar",
+    "bugfix_note": "bugfix: el implementer escribe primero el test que reproduce el bug (debe fallar), luego arregla, luego verifica que pasa.",
+    "refactor_note": "refactor: el implementer verifica cobertura de tests antes de tocar código. El comportamiento externo no cambia. Trabaja en pasos atómicos."
   },
   "features": [
     {
       "id": 1,
-      "name": "storage_layer",
-      "title": "Capa de almacenamiento JSON",
-      "description": "Lectura/escritura atómica de notas en un archivo JSON. Crea el archivo si no existe.",
+      "name": "pyproject_migration",
+      "title": "Migrar a pyproject.toml + uv, preparado para PyPI",
+      "description": "Reemplazar Pipfile + Pipfile.lock + setup.py por pyproject.toml con hatchling como build backend y uv como gestor de entornos. Incluye metadatos completos de publicación PyPI: classifiers, license SPDX, urls, readme. La versión se lee dinámicamente desde ikctl/config/config.py. No toca código de la aplicación.",
       "acceptance": [
-        "Existe src/storage.py con funciones load() y save(notes)",
-        "save() es atómico (escritura a archivo temporal + rename)",
-        "load() devuelve [] si el archivo no existe",
-        "tests/test_storage.py cubre los 3 casos anteriores"
+        "Existe pyproject.toml con [build-system] usando hatchling>=1.26",
+        "[project] contiene: name, dynamic=[\"version\"], description, readme, license=\"Apache-2.0\", license-files=[\"LICENSE*\"], authors, requires-python=\">=3.13\", classifiers, dependencies",
+        "classifiers incluye: 'Development Status :: 4 - Beta', 'Programming Language :: Python :: 3.13', 'License :: OSI Approved :: Apache Software License', 'Intended Audience :: System Administrators', 'Environment :: Console'",
+        "[project.urls] contiene Repository y (opcionalmente) Homepage",
+        "[project.scripts] contiene 'ikctl = \"ikctl.main:main\"'",
+        "[tool.hatch.version] lee __version__ desde ikctl/config/config.py; la versión NO tiene prefijo 'v' (cambiar 'v0.6.4' a '0.6.4')",
+        "[dependency-groups].dev incluye pytest>=8.0 y ruff>=0.5",
+        "Dependencias de producción: paramiko>=3.0, pyaml, envyaml",
+        "setup.py, Pipfile y Pipfile.lock eliminados del repositorio",
+        ".gitignore actualizado: uv.lock commiteado, .venv ignorado",
+        "uv sync instala el entorno sin errores",
+        "uv run ikctl --version imprime la versión correcta (sin 'v')",
+        "uv build genera dist/*.whl y dist/*.tar.gz sin errores",
+        "init.sh actualizado: usa 'uv run pytest' en lugar de 'python3 -m pytest'",
+        ".claude/settings.json actualizado: permiso 'Bash(uv run pytest*)' en lugar de 'Bash(python3 -m pytest*)'"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 2,
-      "name": "note_model",
-      "title": "Modelo de Nota",
-      "description": "Estructura inmutable que representa una nota con id, title, body, created_at.",
+      "name": "solid_config",
+      "title": "Refactor capa config a SOLID",
+      "description": "Descomponer Config (viola SRP: crea archivos, carga config, resuelve kits, resuelve servidores, carga secretos) en clases con una sola responsabilidad. Introducir @dataclass para modelos de datos. Las capas internas lanzan excepciones nombradas en lugar de llamar a sys.exit(). Corrige todos los bugs de la capa config: NameError en extrac_config_kits (variable 'error' no definida), file descriptor leaks, lógica confusa en extract_config_servers (devuelve último servidor en lugar del correcto), typos en nombres de método. Usa type hints Python 3.13.",
       "acceptance": [
-        "Existe src/notes.py con la clase/dataclass Note",
-        "Note.new(title, body) genera id incremental y created_at en ISO 8601",
-        "tests/test_notes.py valida creación y serialización"
+        "Existe ikctl/config/models.py con @dataclass frozen=True: ServerGroup(user, port, hosts, password, pkey), KitPipeline(uploads: list[str], pipeline: list[str]), Context(name, path_kits, path_servers, path_secrets, mode), IkctlConfig(context: str, contexts: dict[str, Context])",
+        "Existe ikctl/config/exceptions.py con IkctlError, ConfigError, KitNotFoundError, ServerNotFoundError",
+        "Existe ikctl/config/loader.py con ConfigLoader: método load() → IkctlConfig; lanza ConfigError si el archivo no existe o está malformado",
+        "Existe ikctl/config/bootstrap.py con ConfigBootstrap: crea ~/.ikctl/config y ~/kits/ si no existen; parámetro interactive=True/False",
+        "Existe ikctl/config/kit_repo.py con KitRepository: método resolve(name: str) → KitPipeline; lanza KitNotFoundError si no existe",
+        "Existe ikctl/config/server_repo.py con ServerRepository: método resolve(group: str | None) → ServerGroup; lanza ServerNotFoundError si no existe; resolve(None) devuelve el primer grupo (no el último como antes)",
+        "Ninguna clase en config/ llama a sys.exit(). Pipeline captura las excepciones",
+        "Todos los archivos usan context managers (with open(...))",
+        "Type hints Python 3.13 en todos los métodos públicos",
+        "Los typos extrac_config_kits y extrac_secrets están corregidos (extract_config_kits, extract_secrets)",
+        "Pipeline adaptado para usar las nuevas clases; comportamiento externo sin cambios"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "refactor"
     },
     {
       "id": 3,
-      "name": "cli_add_list",
-      "title": "Comandos add y list en el CLI",
-      "description": "Permite añadir una nota y listar todas las notas existentes.",
+      "name": "solid_connections",
+      "title": "Refactor capa de conexión a SOLID + soporte SSH completo",
+      "description": "Crear IConnection (ABC) y SSHConnection que soporte todas las opciones paramiko relevantes: tipos de clave (Ed25519, ECDSA, RSA con rsa-sha2-256/512), passphrase, SSH agent, ProxyCommand (jump hosts), timeouts configurables (connect, auth, banner, channel), keepalive, compresión, políticas de known_hosts. Eliminar el workaround RSA SHA1 (paramiko 4.x ya no lo necesita). Corrige el bug de conexión SSH que no se cierra. Usa Python 3.13 type hints.",
       "acceptance": [
-        "`python -m src.cli add 'titulo' --body 'texto'` imprime el id creado",
-        "`python -m src.cli list` imprime una línea por nota: `<id>  <created_at>  <title>`",
-        "tests/test_cli.py cubre ambos comandos con un archivo temporal"
+        "Existe ikctl/connection/base.py con IConnection (ABC): exec_command(cmd: str) → tuple[str, str, int], open_sftp() → paramiko.SFTPClient, close() → None",
+        "Existe ikctl/connection/options.py con @dataclass SSHOptions: hostname, port=22, username, password=None, passphrase=None, key_filename: str|list[str]|None=None, pkey=None, allow_agent=True, look_for_keys=True, timeout=30.0, auth_timeout=30.0, banner_timeout=30.0, channel_timeout=None, keepalive_interval=0, compress=False, disabled_algorithms=None, host_key_policy='auto_add', proxy_command=None",
+        "Existe ikctl/connection/ssh.py con SSHConnection(IConnection): constructor recibe SSHOptions",
+        "SSHConnection soporta autenticación por: clave Ed25519/ECDSA/RSA, password, passphrase, SSH agent (allow_agent=True)",
+        "SSHConnection soporta ProxyCommand cuando proxy_command está definido en SSHOptions",
+        "SSHConnection aplica keepalive si keepalive_interval > 0",
+        "close() cierra la conexión SSH y el canal SFTP si está abierto; usa try/finally",
+        "exec_command() devuelve (stdout: str, stderr: str, exit_code: int) — no imprime directamente",
+        "El workaround RSA SHA1 de las líneas 9-16 del connect.py original ha sido eliminado",
+        "RemoteRunner (o quien use la conexión) llama a connection.close() en un bloque finally"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "refactor"
     },
     {
       "id": 4,
-      "name": "cli_show_delete",
-      "title": "Comandos show y delete en el CLI",
-      "description": "Permite ver y eliminar notas por id.",
+      "name": "solid_runners",
+      "title": "Refactor capa runner/executor a SOLID",
+      "description": "Crear IRunner e IExecutor (ABCs). Separar la responsabilidad de transferir archivos (SftpTransfer), ejecutar comandos remotos (RemoteExecutor) y locales (LocalExecutor), y orquestar un kit completo (RemoteRunner, LocalRunner). Pipeline depende de IRunner, no de clases concretas. Corrige el bug de folder_kit no inicializado y añade validación explícita del nombre de kit. Usa Python 3.13 type hints.",
       "acceptance": [
-        "`python -m src.cli show <id>` imprime título, fecha y cuerpo",
-        "`python -m src.cli delete <id>` elimina y confirma con un mensaje",
-        "Ambos comandos devuelven exit code != 0 si el id no existe",
-        "tests/test_cli.py cubre éxito y fallo"
+        "Existe ikctl/runner/base.py con IRunner (ABC): run(kit: KitPipeline, servers: ServerGroup, options) → list[RunResult]",
+        "Existe ikctl/runner/result.py con @dataclass RunResult: host: str, success: bool, stdout: str, stderr: str",
+        "Existe ikctl/executor/base.py con IExecutor (ABC): execute(command: str) → tuple[str, str, int]",
+        "Existe ikctl/executor/remote.py con RemoteExecutor(IExecutor): usa IConnection.exec_command()",
+        "Existe ikctl/executor/local.py con LocalExecutor(IExecutor): usa subprocess.run() con timeout configurable",
+        "Existe ikctl/runner/remote.py con RemoteRunner(IRunner): SftpTransfer + RemoteExecutor por host; llama a connection.close() en finally",
+        "Existe ikctl/runner/local.py con LocalRunner(IRunner): LocalExecutor",
+        "RemoteRunner valida que el kit existe antes de abrir conexiones; lanza KitNotFoundError si no",
+        "Pipeline recibe IRunner como parámetro (inyección de dependencias), no lo instancia internamente",
+        "Los colores de salida se imprimen desde Pipeline usando los valores de RunResult, no desde executor"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "refactor"
     },
     {
       "id": 5,
-      "name": "cli_search",
-      "title": "Comando search",
-      "description": "Búsqueda por substring en título o cuerpo (case-insensitive).",
+      "name": "test_suite",
+      "title": "Suite de tests con pytest y mocks de paramiko",
+      "description": "Escribir tests para todas las capas del código refactorizado. Tests unitarios para config, connection y executor. Tests de integración ligeros para runner (sin SSH real). Cada módulo público tiene cobertura de camino feliz y al menos un camino de error.",
       "acceptance": [
-        "`python -m src.cli search 'palabra'` lista las notas que contienen la palabra",
-        "Si no hay coincidencias, exit code 1 y mensaje claro",
-        "tests/test_cli.py cubre coincidencia, no-coincidencia y case-insensitivity"
+        "Existe tests/test_config_loader.py: carga correcta de config válida, ConfigError cuando el archivo no existe",
+        "Existe tests/test_kit_repo.py: resolve() con kit existente, KitNotFoundError con kit inexistente",
+        "Existe tests/test_server_repo.py: resolve() con grupo existente, ServerNotFoundError con grupo inexistente, resolve(None) devuelve el primer grupo",
+        "Existe tests/test_ssh_connection.py: mock de paramiko.SSHClient; connect con key_filename, connect con password, close() llama a client.close() y sftp.close(), exec_command() devuelve (stdout, stderr, exit_code)",
+        "Existe tests/test_remote_executor.py: mock de IConnection; execute() con exit_code 0 y con exit_code != 0",
+        "Existe tests/test_local_executor.py: execute() con comando OK, con comando que falla, con TimeoutExpired",
+        "Existe tests/test_remote_runner.py: mock de IConnection y SftpTransfer; run() sube archivos y ejecuta pipeline; KitNotFoundError si kit no existe",
+        "uv run pytest tests -v termina con todos los tests en verde",
+        "./init.sh termina con [OK] Entorno listo"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 6,
-      "name": "cli_edit",
-      "title": "Comando edit",
-      "description": "Permite modificar el título y/o cuerpo de una nota existente por id.",
+      "name": "configurable_timeouts",
+      "title": "Timeouts configurables por CLI y por contexto",
+      "description": "Exponer los timeouts SSH y de ejecución local como opciones configurables: por argumento CLI y por contexto en ~/.ikctl/config. Eliminar todos los valores hardcodeados (500s SSH, 30s local).",
       "acceptance": [
-        "`python -m src.cli edit <id> --title 'nuevo'` actualiza solo el título",
-        "`python -m src.cli edit <id> --body 'nuevo'` actualiza solo el cuerpo",
-        "Pasar ambos flags actualiza ambos campos en la misma llamada",
-        "Si no se pasa ningún flag, exit code != 0 y mensaje claro",
-        "Si el id no existe, exit code != 0 y mensaje en stderr",
-        "tests/test_cli.py cubre éxito (cada flag y combinado), id inexistente y ausencia de flags"
+        "main.py acepta --timeout-connect FLOAT (default 30.0): timeout TCP + auth SSH",
+        "main.py acepta --timeout-exec FLOAT (default 120.0): timeout para comandos locales",
+        "~/.ikctl/config soporta timeout_connect y timeout_exec por contexto; CLI tiene precedencia sobre config",
+        "SSHOptions se construye con los valores resueltos; sin hardcodear 500 ni 30",
+        "LocalExecutor usa timeout_exec en subprocess.run()",
+        "tests/test_configurable_timeouts.py verifica el orden de precedencia CLI > config > default"
       ],
-      "status": "done"
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 7,
-      "name": "cli_recent",
-      "title": "Comando recent",
-      "description": "Lista las N notas más recientes, ordenadas por created_at descendente.",
+      "name": "dry_run",
+      "title": "Flag --dry-run: preview sin ejecutar",
+      "description": "Añadir --dry-run al CLI. Muestra exactamente qué archivos subiría y qué comandos ejecutaría, sin abrir conexiones SSH ni ejecutar nada. Las contraseñas se censuran.",
       "acceptance": [
-        "`python -m src.cli recent` lista las 5 notas más recientes por defecto",
-        "`python -m src.cli recent --limit 10` permite cambiar el número",
-        "El orden es por `created_at` de más reciente a más antigua",
-        "Cada línea sigue el formato `<id>\\t<created_at>\\t<title>` (mismo que `list`)",
-        "Si no hay notas, exit code 0 y no imprime nada (consistente con `list`)",
-        "Si `--limit` es <= 0, exit code != 0 y mensaje claro en stderr",
-        "tests/test_cli.py cubre: orden por defecto, límite custom, archivo vacío, límite inválido"
+        "main.py acepta --dry-run (flag booleano)",
+        "Con --dry-run e --install imprime '[DRY RUN] UPLOAD: <local> → <remote>' por cada archivo",
+        "Con --dry-run e --install imprime '[DRY RUN] EXEC: <comando_censurado>' por cada paso del pipeline",
+        "Con --dry-run no se abre ninguna conexión SSH (IConnection no se instancia)",
+        "Las contraseñas en comandos sudo aparecen como '***' en la salida",
+        "Con --dry-run y --mode local muestra los comandos locales que ejecutaría",
+        "tests/test_dry_run.py verifica que IConnection no se instancia y que la salida contiene los paths correctos"
       ],
-      "sdd": true,
-      "status": "done"
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 8,
-      "name": "cli_count",
-      "title": "Comando count",
-      "description": "Muestra cuántas notas hay almacenadas.",
+      "name": "parallel_hosts",
+      "title": "Ejecución paralela en múltiples hosts",
+      "description": "Cuando un grupo de servidores contiene múltiples hosts, ejecutar los kits en todos concurrentemente usando ThreadPoolExecutor. Agregar los resultados al final con un resumen por host.",
       "acceptance": [
-        "`python -m src.cli count` imprime un entero único: el número total de notas",
-        "Si no hay notas, imprime `0`",
-        "El comando no modifica el archivo de notas",
-        "tests/test_cli.py cubre: archivo vacío y archivo con varias notas"
+        "RemoteRunner ejecuta el kit en paralelo usando concurrent.futures.ThreadPoolExecutor",
+        "main.py acepta --parallel-workers N (default 4): número máximo de threads concurrentes",
+        "La salida prefija cada línea con el host: '[192.168.1.10] UPLOAD: ...'",
+        "Al final se imprime un resumen: 'N hosts OK, M hosts FAILED'",
+        "Si un host falla, los demás siguen ejecutando (no se aborta el grupo)",
+        "El exit code final es 0 solo si todos los hosts terminaron con exit code 0",
+        "tests/test_parallel_hosts.py mockea IConnection por host y verifica que se usan N threads"
       ],
-      "sdd": true,
-      "status": "pending"
-    },
-    {
-      "id": 9,
-      "name": "cli_export",
-      "title": "Comando export a Markdown",
-      "description": "Exporta todas las notas a un archivo Markdown legible por humanos.",
-      "acceptance": [
-        "`python -m src.cli export <ruta>` escribe todas las notas en `<ruta>` con formato Markdown",
-        "Cada nota aparece como sección con título de nivel 2 (`## <title>`), una línea con `created_at`, y el cuerpo como párrafo",
-        "Las notas se ordenan por `id` ascendente en el export",
-        "Si la ruta destino ya existe, exit code != 0 y mensaje claro en stderr (no sobreescribir por defecto)",
-        "Pasar `--force` permite sobreescribir un archivo existente",
-        "tests/test_cli.py cubre: export a ruta nueva, intento de sobreescritura sin `--force`, sobreescritura con `--force`"
-      ],
-      "sdd": true,
-      "status": "pending"
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 10,
-      "name": "cli_stats",
-      "title": "Comando stats",
-      "description": "Muestra estadísticas agregadas sobre las notas almacenadas.",
+      "name": "connection_exceptions",
+      "title": "Excepciones de conexión SSH tipadas",
+      "description": "Añadir SSHConnectionError al dominio de excepciones de ikctl. SSHConnection debe capturar todos los errores de red y autenticación de paramiko (OSError, paramiko.SSHException, AuthenticationException, BadHostKeyException, socket.timeout, TimeoutError) y relanzarlos como SSHConnectionError con mensaje claro. RemoteRunner captura SSHConnectionError y devuelve RunResult(success=False) en lugar de dejar escapar el traceback.",
       "acceptance": [
-        "`python -m src.cli stats` imprime: número total de notas, fecha de la nota más antigua, fecha de la nota más reciente, longitud media del cuerpo (entero, en caracteres)",
-        "El formato es un par `clave: valor` por línea",
-        "Si no hay notas, exit code 0 y un único mensaje `sin notas` por stdout",
-        "El comando no modifica el archivo de notas",
-        "tests/test_cli.py cubre: archivo vacío, archivo con una sola nota, archivo con varias notas"
+        "Existe SSHConnectionError(IkctlError) en ikctl/config/exceptions.py",
+        "SSHConnection._connect() captura OSError, paramiko.SSHException, paramiko.AuthenticationException, paramiko.BadHostKeyException, socket.timeout y TimeoutError; los relanza como SSHConnectionError con mensaje descriptivo",
+        "RemoteRunner._run_on_host() captura SSHConnectionError además de OSError y RuntimeError",
+        "Un host inalcanzable (red, timeout, auth) produce RunResult(success=False, stderr='<mensaje claro>') sin traceback",
+        "Pipeline imprime el mensaje de error del stderr del RunResult, no un stack trace",
+        "tests/test_ssh_connection.py cubre: red inalcanzable (OSError), timeout, fallo de autenticación → todos lanzan SSHConnectionError",
+        "tests/test_remote_runner.py cubre: SSHConnectionError → RunResult(success=False)"
       ],
-      "sdd": true,
-      "status": "pending"
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 9,
+      "name": "kit_auto_discovery",
+      "title": "Auto-discovery de kits al estilo kustomize",
+      "description": "Eliminar el archivo índice raíz (~/kits/ikctl.yaml). KitRepository descubre los kits automáticamente haciendo rglob('**/ikctl.yaml') sobre path_kits. El nombre del kit es la ruta relativa del directorio desde path_kits (e.g. 'docker', 'kubernetes/master'). Se puede definir una lista 'exclude' en ~/.ikctl/config por contexto para ocultar kits concretos. --list kits muestra todos los kits descubiertos sin necesidad de índice.",
+      "acceptance": [
+        "KitRepository.resolve() usa pathlib.Path(path_kits).rglob('ikctl.yaml') en lugar de leer un índice raíz",
+        "El nombre del kit es la ruta relativa del directorio que contiene el ikctl.yaml desde path_kits",
+        "Si existe un archivo raíz ~/kits/ikctl.yaml, se ignora (no es necesario)",
+        "El contexto en ~/.ikctl/config soporta un campo opcional 'exclude: [lista, de, kits]' para ocultar kits del discovery",
+        "--list kits muestra todos los kits descubiertos automáticamente",
+        "KitNotFoundError si el nombre no coincide con ningún directorio descubierto",
+        "Tests cubren: discovery de kit simple, discovery anidado, exclusión por lista, KitNotFoundError"
+      ],
+      "status": "done",
+      "type": "feature"
     },
     {
       "id": 11,
-      "name": "cli_clear",
-      "title": "Comando clear (destructivo)",
-      "description": "Elimina todas las notas del archivo. Requiere confirmación explícita vía flag.",
+      "name": "rich_output_and_debug",
+      "title": "Salida Rich + modo --debug",
+      "description": "Reemplazar la salida actual (logging mezclado con print ANSI) por Rich. En modo normal solo se muestra la salida útil: spinner al conectar SSH, barra de progreso por archivo subido, una línea por paso de pipeline, panel de resumen final por host. Los logs de ikctl y paramiko quedan silenciados. Con --debug se activa el nivel INFO completo mostrando todos los logs internos como actualmente. Rich se añade como dependencia de producción en pyproject.toml.",
       "acceptance": [
-        "`python -m src.cli clear` SIN `--yes` imprime un mensaje pidiendo confirmación, NO borra nada y sale con exit code != 0",
-        "`python -m src.cli clear --yes` borra todas las notas y confirma con un mensaje del tipo `borradas N notas`",
-        "Después de un clear exitoso, `list` no imprime nada",
-        "Si el archivo de notas no existía, `clear --yes` sale con exit code 0 e informa `borradas 0 notas`",
-        "tests/test_cli.py cubre: sin `--yes` (no destructivo), con `--yes` y notas presentes, con `--yes` y archivo vacío"
+        "rich añadido a [project].dependencies en pyproject.toml",
+        "main.py acepta --debug (flag booleano, default False)",
+        "Sin --debug: logging root level = WARNING; paramiko loggers en WARNING; sin logs en stdout",
+        "Con --debug: logging root level = INFO; logs completos visibles como antes",
+        "Spinner de Rich visible mientras se establece la conexión SSH por host",
+        "Barra de progreso de Rich por cada archivo subido via SFTP",
+        "Panel de resumen final con Rich: host, estado (OK/FAILED), stdout/stderr por host",
+        "ikctl --list kits y --list servers usan rich.table.Table en lugar de print()",
+        "ikctl --list context usa un Panel de Rich con la información del contexto activo",
+        "La salida es idéntica en contenido con o sin Rich — solo cambia el formato visual",
+        "tests/test_output_mode.py verifica que sin --debug no se emiten logs INFO de ikctl ni de paramiko"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 12,
+      "name": "ssh_auth_method_selection",
+      "title": "Bug: ikctl intenta password auth cuando el servidor solo acepta publickey",
+      "description": "main.py pasa `password` a SSHOptions aunque el servidor use autenticación por clave. Esto hace que paramiko intente password auth, el servidor lo rechaza con 'Bad authentication type; allowed types: [publickey]'. La lógica de selección del método de autenticación debe ser: si pkey está definido → solo publickey (password=None, allow_agent=False, look_for_keys=False). Si password está definido → solo password (key_filename=None, allow_agent=False, look_for_keys=False). Si ninguno → dejar que paramiko descubra (allow_agent=True, look_for_keys=True).",
+      "acceptance": [
+        "Test que reproduce el bug: SSHOptions con pkey definido y password no-None → el test falla antes del fix porque password se pasa igualmente",
+        "Cuando servers.pkey está definido: SSHOptions recibe key_filename=pkey, password=None, allow_agent=False, look_for_keys=False",
+        "Cuando servers.password es distinto de 'no_pass' y pkey es None: SSHOptions recibe password=password, key_filename=None, allow_agent=False, look_for_keys=False",
+        "Cuando ni pkey ni password están definidos: SSHOptions recibe password=None, key_filename=None, allow_agent=True, look_for_keys=True",
+        "El secreto (secrets) solo se usa como password cuando servers.password es 'no_pass' y pkey es None",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 13,
+      "name": "git_kits_provider",
+      "title": "Obtener kits desde un repositorio git",
+      "description": "Permitir que path_kits apunte a un repositorio git en lugar de un directorio local. Si el contexto define kits_repo (URL git) y opcionalmente kits_ref (branch/tag/commit), ikctl clona el repo en ~/.ikctl/cache/<repo-name>/ en el primer uso y hace git pull en usos posteriores. El directorio clonado se usa como path_kits. Soporta repos HTTPS y SSH. No añade dependencias externas — usa subprocess con el git del sistema.",
+      "acceptance": [
+        "Context dataclass acepta campos opcionales: kits_repo: str | None = None, kits_ref: str = 'main'",
+        "Existe ikctl/config/git_provider.py con GitKitsProvider: método ensure(kits_repo, kits_ref) → str (ruta local al repo clonado/actualizado)",
+        "Si ~/.ikctl/cache/<repo-name>/ no existe: git clone <kits_repo> --branch <kits_ref>",
+        "Si ~/.ikctl/cache/<repo-name>/ ya existe: git -C <path> pull origin <kits_ref>",
+        "Si kits_repo está definido, el path_kits resultante es el directorio clonado (ignora path_kits del config)",
+        "Si kits_repo no está definido, el comportamiento es idéntico al actual (usa path_kits)",
+        "Errores de git (repo no existe, sin acceso, red) se lanzan como ConfigError con mensaje claro",
+        "Tests cubren: clone en primer uso, pull en usos posteriores, ConfigError si git falla",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 14,
+      "name": "pipeline_orchestration",
+      "title": "Orquestación declarativa de kits con DAG y paso de resultados",
+      "description": "Añadir el concepto de pipeline a nivel de orquestación: un fichero YAML que define qué kits ejecutar, en qué servidores, con qué dependencias entre steps (DAG) y cómo pasar la salida de un step como parámetro al siguiente. Steps sin dependencias se ejecutan en paralelo. La salida estructurada (KEY=value en stdout) de un kit queda disponible para steps posteriores via {{ steps.<id>.<KEY> }}.",
+      "acceptance": [
+        "main.py acepta --pipeline <fichero.yaml> como alternativa a --install",
+        "El fichero de pipeline define: name, steps[]. Cada step tiene: id, kit, servers, sudo (opcional), params (opcional), needs (opcional, lista de ids)",
+        "Steps sin needs se ejecutan en paralelo (ThreadPoolExecutor). Steps con needs esperan a sus dependencias",
+        "La salida stdout de cada step se parsea buscando líneas KEY=VALUE; esas variables quedan disponibles como steps.<id>.<KEY>",
+        "Los params de un step pueden referenciar outputs de steps anteriores con {{ steps.<id>.<KEY> }}",
+        "Si un step falla, los steps que dependen de él se marcan como skipped y no se ejecutan",
+        "La salida muestra el DAG de ejecución: qué steps corren en paralelo, cuáles esperan",
+        "Existe ikctl/orchestration/runner.py con OrchestrationRunner que ejecuta el DAG",
+        "Existe ikctl/orchestration/parser.py con PipelineParser que lee y valida el YAML",
+        "Tests cubren: ejecución en paralelo de steps sin needs, espera de dependencias, interpolación de outputs, skip de dependientes si falla un step",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
       ],
       "sdd": true,
-      "status": "pending"
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 15,
+      "name": "path_pipelines",
+      "title": "Configurar path_pipelines en ~/.ikctl/config para referenciar pipelines por nombre",
+      "description": "Añadir campo opcional path_pipelines al contexto en ~/.ikctl/config. Cuando está definido, --pipeline <nombre> busca <path_pipelines>/<nombre>.yaml en lugar de exigir una ruta absoluta. Si el valor de --pipeline es una ruta absoluta o relativa existente, se usa directamente (compatibilidad hacia atrás). Si no se encuentra ni por nombre ni por ruta, error claro.",
+      "acceptance": [
+        "Context dataclass acepta campo opcional: path_pipelines: str | None = None",
+        "ConfigLoader lee path_pipelines del YAML si existe",
+        "main.py resuelve --pipeline así: 1) si es ruta existente → úsala directamente; 2) si path_pipelines está definido → busca <path_pipelines>/<nombre>.yaml; 3) si no → ConfigError con mensaje claro",
+        "ikctl --pipeline install-docker funciona si path_pipelines apunta al directorio correcto",
+        "ikctl --pipeline /ruta/absoluta/pipeline.yaml sigue funcionando igual que antes",
+        "Tests cubren: resolución por nombre con path_pipelines, ruta absoluta directa, error si no se encuentra",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 16,
+      "name": "list_pipelines",
+      "title": "Bug: --list no soporta pipelines",
+      "description": "ikctl --list pipelines no existe. Hay que añadir 'pipelines' a las opciones de --list. Lista todos los ficheros .yaml encontrados en path_pipelines del contexto activo. Si path_pipelines no está configurado, muestra mensaje claro.",
+      "acceptance": [
+        "main.py acepta --list pipelines como opción válida",
+        "view.py muestra los ficheros .yaml de path_pipelines en una tabla Rich",
+        "Si path_pipelines no está configurado en el contexto activo, imprime mensaje claro en lugar de error",
+        "Si path_pipelines está configurado pero vacío, imprime 'No pipelines found'",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 17,
+      "name": "pipeline_params",
+      "title": "Parámetros CLI para pipelines via -p KEY=VALUE",
+      "description": "Permitir pasar parámetros a una pipeline desde el CLI usando -p KEY=VALUE. Los steps del pipeline pueden referenciarlos con {{ params.KEY }} igual que usan {{ steps.<id>.KEY }}. El OutputInterpolator se extiende para resolver ambas sintaxis.",
+      "acceptance": [
+        "ikctl --pipeline install-kubernetes -p JOIN_TOKEN=abc123 JOIN_ENDPOINT=10.0.0.5:6443 funciona",
+        "main.py parsea los valores de -p con formato KEY=VALUE y los pasa a OrchestrationRunner como dict",
+        "Los parámetros que no siguen el formato KEY=VALUE se ignoran con log warning",
+        "OutputInterpolator.interpolate() acepta un tercer argumento params: dict[str, str] y resuelve {{ params.KEY }}",
+        "Si {{ params.KEY }} referencia una KEY que no fue pasada → ConfigError con mensaje claro",
+        "tests/test_output_interpolator.py cubre: {{ params.KEY }}, KEY inexistente, mezcla {{ steps.id.KEY }} y {{ params.KEY }}",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 18,
+      "name": "kit_outputs_descriptor",
+      "title": "Declarar outputs de un kit en ikctl.yaml y comando --describe",
+      "description": "Añadir campo opcional 'outputs' al manifest ikctl.yaml de cada kit para documentar qué KEY=VALUE puede emitir al stdout. Añadir el comando 'ikctl --describe <kit>' que muestra el manifest del kit (scripts, outputs) con formato Rich. Permite saber qué usar en '{{ steps.<id>.KEY }}' sin leer el bash.",
+      "acceptance": [
+        "El campo 'outputs' en ikctl.yaml es opcional: outputs: {KEY: descripción, KEY2: descripción}",
+        "KitRepository.resolve() incluye los outputs en KitPipeline o en un nuevo KitInfo dataclass",
+        "main.py acepta --describe <kit> como alternativa a --install y --pipeline",
+        "ikctl --describe <kit> muestra con Rich: nombre del kit, scripts (uploads + pipeline), outputs declarados",
+        "Si el kit no declara outputs, --describe muestra 'No outputs declared'",
+        "ikctl --list kits muestra un indicador cuando el kit tiene outputs declarados",
+        "Tests cubren: parse de outputs del YAML, KitRepository con outputs, --describe sin outputs",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 19,
+      "name": "git_kits_token",
+      "title": "Soporte de token de autenticación para repos git privados",
+      "description": "Añadir campo opcional kits_token en el contexto de ~/.ikctl/config para autenticar repos HTTPS privados. Si está definido, GitKitsProvider inyecta el token en la URL git (https://oauth2:<token>@host/repo.git) antes de clonar o hacer pull. El comportamiento sin token es idéntico al actual. El token puede referenciar una variable de entorno ($GITLAB_TOKEN). Para repos SSH la autenticación sigue delegando en el agente SSH del sistema.",
+      "acceptance": [
+        "Context dataclass acepta campo opcional: kits_token: str | None = None",
+        "ConfigLoader lee kits_token del YAML; soporta variables de entorno ($TOKEN via envyaml)",
+        "GitKitsProvider.ensure() acepta kits_token: str | None = None",
+        "Si kits_token está definido y kits_repo empieza por https://, inyecta el token en la URL: https://oauth2:<token>@host/repo.git",
+        "Si kits_token está definido pero kits_repo es SSH (git@), lo ignora con log warning",
+        "Si kits_token es None, el comportamiento es idéntico al actual (sin cambios)",
+        "El token nunca aparece en logs ni en mensajes de error (se censura como ***)",
+        "Tests cubren: URL HTTPS con token, repo SSH ignora token, sin token comportamiento actual, censura en logs",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 20,
+      "name": "bootstrap_cleanup",
+      "title": "Limpiar bootstrap: eliminar legados, resolver $HOME, placeholder seguro",
+      "description": "El bootstrap actual genera artefactos legacy o confusos: (1) crea ~/kits/ikctl.yaml con un índice de kits que el auto-discovery ignora, (2) usa el string literal \"$HOME/kits\" en defaults en lugar de resolver con pathlib.Path.home(), (3) usa \"$PASSWORD\" como placeholder que envyaml interpreta como variable de entorno. Corregir estos tres puntos.",
+      "acceptance": [
+        "bootstrap.py no crea ~/kits/ikctl.yaml (el índice legacy); si acaso crea un kit de ejemplo funcional",
+        "bootstrap.py usa str(pathlib.Path.home() / \"kits\") en lugar de \"$HOME/kits\" como default",
+        "El placeholder de password por defecto es \"CHANGE_ME\" en lugar de \"$PASSWORD\"",
+        "init.sh termina con [OK] Entorno listo",
+        "tests/test_bootstrap.py cubre los tres cambios"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 21,
+      "name": "fix_dependencies",
+      "title": "Eliminar dependencia redundante pyaml (duplicada con PyYAML)",
+      "description": "pyproject.toml lista tanto pyaml como PyYAML>=6.0 en [project].dependencies. pyaml ya trae PyYAML como dependencia transitiva. Mantener solo pyaml y eliminar PyYAML explícito. pyaml es más declarativo (yaml.dump con defaults legibles), por lo que es la que nos interesa conservar. No hay código que importe directamente PyYAML (yaml.load/dump) — todo pasa por pyaml o envyaml.",
+      "acceptance": [
+        "pyproject.toml ya no lista PyYAML en [project].dependencies (solo pyaml)",
+        "uv sync instala sin errores",
+        "uv run pytest tests -v pasa al 100%",
+        "No hay imports de yaml (PyYAML directo) en el código fuente que fallen tras eliminar la dependencia explícita",
+        "init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 22,
+      "name": "show_help_on_empty",
+      "title": "Mostrar --help cuando ikctl se ejecuta sin argumentos",
+      "description": "Actualmente ikctl sin argumentos (ikctl a secas) carga Config, construye el runner y sale sin output visible. Comportamiento esperado: si no se pasa ningún argumento accionable (--install, --pipeline, --describe, --list, --context, --version), mostrar el mensaje de ayuda (parser.print_help()) y salir con código 0. El usuario nuevo que teclea ikctl por primera vez ve la ayuda en lugar de silencio.",
+      "acceptance": [
+        "ikctl sin argumentos muestra el mensaje de ayuda de argparse y sale con exit code 0",
+        "ikctl --help sigue funcionando igual",
+        "ikctl --version sigue mostrando la versión",
+        "ikctl --install foo sigue ejecutando el kit normalmente",
+        "init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 24,
+      "name": "bootstrap_new_structure",
+      "title": "Bootstrap: nueva estructura de directorios y config completo comentado",
+      "description": "Mejorar ConfigBootstrap para que cree la estructura ~/kits/default/{kits,pipelines,servers} con ejemplos funcionales. El fichero ~/.ikctl/config debe incluir todas las opciones posibles del contexto: las no usadas comentadas, todas con un comentario corto que explique para qué sirven. Extraer los dicts de defaults a constantes de módulo.",
+      "acceptance": [
+        "bootstrap.py crea ~/kits/default/kits/example-kit/ikctl.yaml con un manifest de ejemplo funcional",
+        "bootstrap.py crea ~/kits/default/pipelines/example.yaml con una pipeline de ejemplo",
+        "bootstrap.py crea ~/kits/default/servers/config.yaml con el servidor de ejemplo",
+        "bootstrap.py crea ~/kits/default/servers/.secrets vacío",
+        "~/.ikctl/config incluye todos los campos del dataclass Context con un comentario corto por campo; los opcionales no usados aparecen comentados",
+        "Los dicts de defaults (_DEFAULT_SERVERS, config) son constantes de módulo, no variables locales",
+        "Los path_kits y path_servers del config generado apuntan a las nuevas rutas",
+        "El comportamiento idempotente y --force siguen funcionando (no crea si ya existe, sobreescribe con --force)",
+        "tests/test_bootstrap.py actualizado para cubrir la nueva estructura",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "sdd": true,
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 23,
+      "name": "init_command",
+      "title": "Comando --init: onboarding interactivo para nuevos usuarios",
+      "description": "Crear ikctl --init como experiencia guiada que explica los conceptos fundamentales (contextos, servidores, kits, pipelines) y genera una configuración funcional. Cada paso muestra el archivo que se crea y su propósito. Incluye un kit show-date de ejemplo, un grupo de servidores demo, y una pipeline example. El usuario sale del init sabiendo qué es cada pieza y cómo usarla.",
+      "acceptance": [
+        "ikctl --init inicia un asistente interactivo paso a paso (4 pasos)",
+        "Paso 1: explica y crea ~/.ikctl/config con contexto 'demo', path_kits, path_servers, path_pipelines, mode=local",
+        "Paso 2: explica y crea ~/.ikctl/servers/config.yaml con grupo 'demo-servers' apuntando a 127.0.0.1",
+        "Paso 3: explica y crea ~/kits/show-date/ikctl.yaml (manifiesto comentado) + date.sh funcional",
+        "Paso 4: explica y crea ~/.ikctl/pipelines/example.yaml (pipeline simple con un step)",
+        "ikctl --init --auto crea todo sin preguntar (non-interactive)",
+        "ikctl --init es idempotente: no sobrescribe archivos existentes a menos que se pase --force",
+        "Al finalizar, imprime un panel Resumen con la estructura creada y los comandos sugeridos para continuar",
+        "El directorio path_kits y path_servers están separados (~/kits/ y ~/.ikctl/servers/)",
+        "No se crea ~/kits/ikctl.yaml legacy (índice)",
+        "ikctl --init funciona aunque el bootstrap de Config() no se haya ejecutado",
+        "init.sh termina con [OK] Entorno listo",
+        "tests/test_init_command.py cubre: init interactivo, --auto, --force, idempotencia, estructura creada"
+      ],
+      "sdd": true,
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 25,
+      "name": "ssh_options_factory",
+      "title": "Mover lógica de selección de auth SSH a SSHOptions.from_server_group()",
+      "description": "La función _make_connection_factory() en main.py contiene la lógica de selección del método de autenticación SSH (pkey / password / agent). Esa lógica pertenece a SSHOptions (SRP). Extraerla a un classmethod SSHOptions.from_server_group() y simplificar main.py.",
+      "acceptance": [
+        "SSHOptions.from_server_group(host, servers, secrets, timeout) es un classmethod en ikctl/connection/options.py",
+        "from_server_group selecciona el método de auth: pkey → key_filename+password=None; password → solo password; ninguno → allow_agent=True+look_for_keys=True",
+        "_make_connection_factory() en main.py usa SSHOptions.from_server_group() y queda reducida a 3-4 líneas",
+        "El bloque if/elif/else de selección de credenciales desaparece de main.py",
+        "tests/test_ssh_auth_selection.py sigue pasando sin modificaciones (o se adapta para probar from_server_group directamente)",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "refactor"
+    },
+    {
+      "id": 26,
+      "name": "wizard_custom_paths",
+      "title": "Rutas personalizables en el wizard de init y descriptions dinámicas",
+      "description": "El wizard de --init siempre genera rutas fijas. El usuario debe poder especificar rutas personalizadas para kits, servers y pipelines. Además, las descripciones de cada step muestran rutas hardcodeadas que no reflejan la ruta real que se va a aplicar.",
+      "acceptance": [
+        "El wizard pregunta al usuario las rutas deseadas antes del Step 1, mostrando el valor por defecto de ScaffoldPaths.default() como sugerencia",
+        "Si el usuario pulsa Enter sin escribir nada, se usa la ruta por defecto",
+        "En modo --auto se usan las rutas por defecto sin preguntar",
+        "ScaffoldPaths se construye con las rutas elegidas por el usuario (no siempre con .default())",
+        "Las descripciones de cada step muestran la ruta real (desde self._scaffold.paths) en lugar de texto hardcodeado",
+        "Los tests existentes en test_init_command.py siguen pasando sin modificaciones",
+        "uv run pytest tests -v pasa sin errores"
+      ],
+      "status": "done",
+      "type": "feature"
+    },
+    {
+      "id": 27,
+      "name": "ansible_style_output",
+      "title": "Salida estilo Ansible: sin barra de progreso, sin IP",
+      "description": "Reemplazar la barra de progreso de Rich y la IP del host por una salida limpia estilo Ansible. En modo normal se muestra el nombre del servidor (no la IP), el fichero que se sube y el paso que se ejecuta, con estado OK/FAILED al final de cada línea. La salida del host (stdout/stderr) solo se muestra con --debug.",
+      "acceptance": [
+        "La barra de progreso de Rich (Progress) se elimina del runner remoto",
+        "Cada UPLOAD muestra: '[<nombre_host>] UPLOAD <fichero>  OK' o '... FAILED'",
+        "Cada RUN muestra: '[<nombre_host>] RUN   <script>  OK' o '... FAILED'",
+        "Sin --debug no se imprime stdout ni stderr del host",
+        "Con --debug sí se imprime stdout/stderr del host",
+        "No se muestra la IP del host en la salida normal (se usa el nombre si está disponible, o el primer host del grupo)",
+        "El resumen final 'N hosts OK, M hosts FAILED' se mantiene",
+        "tests/test_remote_runner.py verifica el formato de las líneas de salida"
+      ],
+      "status": "done",
+      "sdd": true,
+      "type": "feature"
+    },
+    {
+      "id": 29,
+      "name": "fix_config_error_traceback",
+      "title": "Bug: ConfigError en load_config_file_servers muestra traceback crudo",
+      "description": "Cuando el fichero de servidores no existe o no puede leerse, load_config_file_servers() lanza ConfigError pero main.py no la captura en ese punto, resultando en un traceback crudo visible al usuario. El mismo problema existe para extract_secrets() y load_config_file_mode(). Hay que capturar ConfigError en main() y mostrar un mensaje claro + sys.exit(1).",
+      "acceptance": [
+        "ikctl -l servers con path_servers apuntando a un fichero inexistente imprime un mensaje de error claro (sin traceback) y sale con exit code 1",
+        "La llamada data.load_config_file_servers() en main() está envuelta en try/except ConfigError",
+        "tests/test_config_error_handling.py tiene un test que verifica: cuando load_config_file_servers lanza ConfigError, main() imprime el mensaje en stderr y sale con exit code 1 (sin traceback)",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 30,
+      "name": "fix_rsa_sha1_compat",
+      "title": "Bug: fallo de conexión SSH con servidores RSA legacy (ssh-rsa SHA-1)",
+      "description": "paramiko 3.x prefiere rsa-sha2-256/512 al conectar con claves RSA. Si el servidor solo soporta ssh-rsa (SHA-1), la conexión falla con 'Unable to agree on a pubkey algorithm'. SSHConnection._connect() debe detectar este caso y reintentar con disabled_algorithms={'pubkeys': ['rsa-sha2-256', 'rsa-sha2-512']} para forzar ssh-rsa. El reintento debe loguearse via self._logger.info() (visible solo con --debug).",
+      "acceptance": [
+        "pyproject.toml restringe paramiko a '>=3.0,<4.0'; Paramiko 5.x eliminó SHA-1 de RSAKey.HASHES rompiendo la compatibilidad con servidores legacy",
+        "SSHConnection._connect() usa paramiko.Transport directamente (no SSHClient.connect()); esto permite controlar el handshake antes de la autenticación",
+        "paramiko.RSAKey.HASHES contiene 'ssh-rsa' (SHA-1) en la versión instalada — garantizado por el pin de versión",
+        "tests/test_ssh_connection.py cubre: conexión con servidor que anuncia solo 'ssh-rsa' en server-sig-algs → autenticación exitosa con clave RSA",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
+      "type": "bugfix"
+    },
+    {
+      "id": 28,
+      "name": "smart_upload",
+      "title": "Upload incremental: solo subir si el kit ha cambiado",
+      "description": "Antes de subir un fichero al host remoto, verificar si ya existe y si su contenido es idéntico (mediante checksum MD5/SHA256). Solo se sube si el fichero no existe o ha cambiado. Esto reduce el tiempo de ejecución y el tráfico SFTP en ejecuciones repetidas.",
+      "acceptance": [
+        "SftpTransfer calcula el checksum (MD5 o SHA256) del fichero local antes de subir",
+        "Si el fichero remoto existe, se obtiene su checksum via SFTP (exec_command con md5sum/sha256sum)",
+        "Si los checksums coinciden, el fichero no se sube y se muestra '[<host>] SKIP  <fichero>  (unchanged)'",
+        "Si el fichero remoto no existe o los checksums difieren, se sube normalmente",
+        "Con --force-upload se omite la verificación y se suben todos los ficheros siempre",
+        "tests/test_smart_upload.py cubre: fichero sin cambios (skip), fichero modificado (upload), fichero nuevo (upload), --force-upload (siempre sube)"
+      ],
+      "status": "pending",
+      "type": "feature",
+      "sdd": true
+    },
+    {
+      "id": 31,
+      "name": "strict_mode",
+      "title": "Flag --strict: ejecutar scripts con bash -eo pipefail",
+      "description": "Añadir --strict al CLI. Cuando está activo, ikctl lanza los scripts remotos con 'bash -eo pipefail' en lugar de 'bash'. Esto propaga como exit code 1 cualquier comando que falle dentro del script (-e) y cualquier fallo en una pipe (-o pipefail). Sin --strict el comportamiento es idéntico al actual.",
+      "acceptance": [
+        "main.py acepta --strict (flag booleano, default False)",
+        "RunOptions incluye strict: bool = False",
+        "_build_remote_command() usa 'bash -eo pipefail' cuando options.strict es True, 'bash' cuando es False",
+        "El flag funciona con y sin sudo",
+        "tests/test_strict_mode.py cubre: sin --strict el comando usa 'bash'; con --strict usa 'bash -eo pipefail'; combinación con sudo",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
+      "type": "feature"
     }
   ]
 }

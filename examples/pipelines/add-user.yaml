@@ -1,0 +1,23 @@
+# add-user.yaml
+# Demuestra: parámetros CLI obligatorios
+#
+# Añade un usuario en todos los servidores del grupo.
+# El nombre de usuario y la clave pública vienen del CLI.
+#
+# Uso:
+#   ikctl --pipeline add-user \
+#     -p USERNAME=john \
+#     -p SSH_KEY="ssh-ed25519 AAAA... john@laptop"
+#
+# El kit users/add-user.sh recibirá: john "ssh-ed25519 AAAA... john@laptop"
+
+name: add-user
+
+steps:
+  - id: add-user
+    kit: users
+    servers: all-nodes
+    sudo: true
+    params:
+      - "{{ params.USERNAME }}"   # -p USERNAME=john
+      - "{{ params.SSH_KEY }}"    # -p SSH_KEY="ssh-ed25519 AAAA..."
