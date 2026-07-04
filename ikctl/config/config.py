@@ -13,7 +13,7 @@ from ikctl.config.kit_repo import KitRepository
 from ikctl.config.loader import ConfigLoader
 from ikctl.config.models import KitPipeline
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 
 _logger = logging.getLogger(__name__)
 

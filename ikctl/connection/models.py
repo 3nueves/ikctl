@@ -58,7 +58,7 @@ class SSHOptions:
                 proxy_command=servers.proxy_command,
                 host_key_policy=servers.host_key_policy,
             )
-        if servers.password is not None:
+        if servers.password is not None and servers.password != "no_pass":
             return cls(
                 hostname=host,
                 port=servers.port,
