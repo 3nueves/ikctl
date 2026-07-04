@@ -1,0 +1,54 @@
+# install-kubernetes.yaml
+# Ejemplo completo: instala un cluster Kubernetes con output chaining.
+# El paso kubeadm_init escribe JOIN_TOKEN y JOIN_ENDPOINT al stdout (KEY=VALUE).
+# El paso join-in-kubes los recibe como parámetros via {{ steps.<id>.<KEY> }}.
+#
+# Uso: ikctl --pipeline kits/pipelines/install-kubernetes.yaml
+#
+# Requisito: kubeadm-init.sh debe escribir al stdout:
+#   echo "JOIN_TOKEN=<token>"
+#   echo "JOIN_ENDPOINT=<ip>:6443"
+
+name: install-kubernetes-cluster
+
+steps:
+  - id: packages
+    kit: packages
+    servers: all-nodes
+    sudo: true
+
+  - id: crio
+    kit: crio
+    servers: all-nodes
+    sudo: true
+    needs: [packages]
+
+  - id: kubernetes-base
+    kit: install_kubernetes
+    servers: all-nodes
+    sudo: true
+    needs: [crio]
+
+  - id: init-master
+    kit: kubeadm_init
+    servers: master
+    sudo: true
+    needs: [kubernetes-base]
+    # kubeadm-init.sh debe imprimir:
+    # JOIN_TOKEN=<token>
+    # JOIN_ENDPOINT=<ip>:6443
+
+  - id: calico
+    kit: calico
+    servers: master
+    sudo: true
+    needs: [init-master]
+
+  - id: join-workers
+    kit: join-in-kubes
+    servers: workers
+    sudo: true
+    needs: [init-master]
+    params:
+      - "{{ steps.init-master.JOIN_TOKEN }}"
+      - "{{ steps.init-master.JOIN_ENDPOINT }}"

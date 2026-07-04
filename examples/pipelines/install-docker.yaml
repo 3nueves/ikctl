@@ -1,0 +1,19 @@
+# install-docker.yaml
+# Ejemplo simple: instala paquetes base y luego Docker en un grupo de servidores.
+# Uso: ikctl --pipeline kits/pipelines/install-docker.yaml
+#
+# Adapta el campo "servers" al nombre del grupo en tu config.yaml.
+
+name: install-docker
+
+steps:
+  - id: packages
+    kit: packages
+    servers: workers
+    sudo: true
+
+  - id: docker
+    kit: docker
+    servers: workers
+    sudo: true
+    needs: [packages]   # espera a que packages termine antes de instalar Docker
