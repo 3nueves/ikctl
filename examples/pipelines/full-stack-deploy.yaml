@@ -1,0 +1,78 @@
+# full-stack-deploy.yaml
+# Demuestra: pipeline completo con params CLI, output chaining y paralelo
+#
+# Despliega HAProxy + Keepalived (HA) en paralelo,
+# luego Kubernetes sobre los nodos preparados.
+# La versión de Kubernetes viene del CLI.
+#
+# Uso:
+#   ikctl --pipeline full-stack-deploy -p K8S_VERSION=1.29
+
+name: full-stack-deploy
+
+steps:
+  # ── Fase 1: preparación de nodos (paralelo) ──────────────────────────────
+  - id: packages-lb
+    kit: packages
+    servers: loadbalancers
+    sudo: true
+
+  - id: packages-nodes
+    kit: packages
+    servers: all-nodes
+    sudo: true
+
+  # ── Fase 2: HA loadbalancer (paralelo entre sí, tras packages-lb) ────────
+  - id: haproxy
+    kit: haproxy
+    servers: loadbalancers
+    sudo: true
+    needs: [packages-lb]
+
+  - id: keepalived
+    kit: keepalived
+    servers: loadbalancers
+    sudo: true
+    needs: [packages-lb]
+
+  # ── Fase 3: container runtime (tras packages-nodes) ──────────────────────
+  - id: crio
+    kit: crio
+    servers: all-nodes
+    sudo: true
+    needs: [packages-nodes]
+
+  # ── Fase 4: Kubernetes base (tras crio) ──────────────────────────────────
+  - id: kubernetes
+    kit: install_kubernetes
+    servers: all-nodes
+    sudo: true
+    needs: [crio]
+    params:
+      - "{{ params.K8S_VERSION }}"   # -p K8S_VERSION=1.29
+
+  # ── Fase 5: init master + join workers ───────────────────────────────────
+  - id: init-master
+    kit: kubeadm_init
+    servers: master
+    sudo: true
+    needs: [kubernetes, haproxy, keepalived]
+    # escribe al stdout:
+    # JOIN_TOKEN=<token>
+    # JOIN_ENDPOINT=<vip>:6443
+
+  - id: join-workers
+    kit: join-in-kubes
+    servers: workers
+    sudo: true
+    needs: [init-master]
+    params:
+      - "{{ steps.init-master.JOIN_TOKEN }}"
+      - "{{ steps.init-master.JOIN_ENDPOINT }}"
+
+  # ── Fase 6: CNI (tras init-master) ───────────────────────────────────────
+  - id: calico
+    kit: calico
+    servers: master
+    sudo: true
+    needs: [init-master]

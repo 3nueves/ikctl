@@ -1,0 +1,61 @@
+# install-kubernetes-with-params.yaml
+# Demuestra: output chaining + parámetros CLI
+#
+# El step kubeadm_init escribe JOIN_TOKEN y JOIN_ENDPOINT al stdout:
+#   echo "JOIN_TOKEN=<token>"
+#   echo "JOIN_ENDPOINT=<ip>:6443"
+#
+# El step join-workers los recibe via {{ steps.init-master.KEY }}.
+# El POD_CIDR viene del CLI con -p POD_CIDR=192.168.0.0/16
+#
+# Uso:
+#   ikctl --pipeline install-kubernetes-with-params -p POD_CIDR=192.168.0.0/16
+#
+# Con path_pipelines configurado en ~/.ikctl/config:
+#   ikctl --pipeline install-kubernetes-with-params -p POD_CIDR=192.168.0.0/16
+
+name: install-kubernetes-with-params
+
+steps:
+  - id: packages
+    kit: packages
+    servers: all-nodes
+    sudo: true
+
+  - id: crio
+    kit: crio
+    servers: all-nodes
+    sudo: true
+    needs: [packages]
+
+  - id: kubernetes-base
+    kit: install_kubernetes
+    servers: all-nodes
+    sudo: true
+    needs: [crio]
+
+  - id: init-master
+    kit: kubeadm_init
+    servers: master
+    sudo: true
+    needs: [kubernetes-base]
+    params:
+      - "{{ params.POD_CIDR }}"    # ← pasado desde CLI: -p POD_CIDR=192.168.0.0/16
+    # kubeadm-init.sh debe imprimir al stdout:
+    # JOIN_TOKEN=<token>
+    # JOIN_ENDPOINT=<master-ip>:6443
+
+  - id: calico
+    kit: calico
+    servers: master
+    sudo: true
+    needs: [init-master]
+
+  - id: join-workers
+    kit: join-in-kubes
+    servers: workers
+    sudo: true
+    needs: [init-master]
+    params:
+      - "{{ steps.init-master.JOIN_TOKEN }}"    # ← output del step anterior
+      - "{{ steps.init-master.JOIN_ENDPOINT }}" # ← output del step anterior

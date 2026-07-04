@@ -1,0 +1,9 @@
+kits:
+  uploads:
+    - deploy-service.sh
+  pipeline:
+    - deploy-service.sh
+  outputs:
+    SERVICE_PORT: "Port where the service is listening"
+    SERVICE_URL: "Full URL to access the service (http://host:port)"
+    SERVICE_STATUS: "Service status: running | failed"

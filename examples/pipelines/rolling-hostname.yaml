@@ -1,0 +1,34 @@
+# rolling-hostname.yaml
+# Demuestra: output chaining entre grupos distintos
+#
+# El step get-master-ip ejecuta un comando en el master y captura su IP.
+# Los workers la usan para configurar su DNS apuntando al master.
+#
+# get-master-ip/get-master-ip.sh debe imprimir:
+#   MASTER_IP=<ip>
+#
+# Uso:
+#   ikctl --pipeline rolling-hostname
+
+name: rolling-hostname
+
+steps:
+  - id: set-hostname-master
+    kit: hostname
+    servers: master
+    sudo: true
+    params:
+      - "{{ params.MASTER_HOSTNAME }}"   # -p MASTER_HOSTNAME=k8s-master-01
+
+  - id: set-hostname-workers
+    kit: hostname
+    servers: workers
+    sudo: true
+    # workers se renombran en paralelo con el master (sin needs entre ellos)
+
+  - id: configure-dns
+    kit: resolv_conf
+    servers: workers
+    sudo: true
+    needs: [set-hostname-master, set-hostname-workers]
+    # todos los hostnames listos antes de tocar DNS

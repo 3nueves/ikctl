@@ -1,0 +1,9 @@
+kits:
+  uploads:
+    - prepare-env.sh
+  pipeline:
+    - prepare-env.sh
+  outputs:
+    HOSTNAME: "Hostname of the server after configuration"
+    OS_VERSION: "Detected OS version (e.g. Ubuntu 22.04)"
+    PACKAGES_OK: "true if all packages installed successfully"

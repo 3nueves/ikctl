@@ -1,0 +1,44 @@
+# prepare-nodes.yaml
+# Ejemplo de preparación de nodos: cambia hostname, instala paquetes base y Docker en paralelo en dos grupos.
+# Los pasos sin "needs" (packages-workers y packages-master) se ejecutan en paralelo.
+#
+# Uso: ikctl --pipeline kits/pipelines/prepare-nodes.yaml
+
+name: prepare-nodes
+
+steps:
+  - id: hostname-workers
+    kit: hostname
+    servers: workers
+    sudo: true
+
+  - id: hostname-master
+    kit: hostname
+    servers: master
+    sudo: true
+
+  # packages se instala en paralelo en workers y master (ninguno tiene needs)
+  - id: packages-workers
+    kit: packages
+    servers: workers
+    sudo: true
+    needs: [hostname-workers]
+
+  - id: packages-master
+    kit: packages
+    servers: master
+    sudo: true
+    needs: [hostname-master]
+
+  # Docker espera a que packages esté listo en cada grupo
+  - id: docker-workers
+    kit: docker
+    servers: workers
+    sudo: true
+    needs: [packages-workers]
+
+  - id: docker-master
+    kit: docker
+    servers: master
+    sudo: true
+    needs: [packages-master]
