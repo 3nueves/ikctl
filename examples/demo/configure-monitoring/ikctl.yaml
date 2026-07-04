@@ -1,8 +1,0 @@
-kits:
-  uploads:
-    - configure-monitoring.sh
-  pipeline:
-    - configure-monitoring.sh
-  outputs:
-    MONITOR_ENDPOINT: "Prometheus/monitoring endpoint configured"
-    ALERT_EMAIL: "Email configured for alerts"
