@@ -1,4 +1,0 @@
-kits:
-- id_rsa_kubernetes-unelink.pub
-- install_kubes.sh
-# - kubeadm-init.sh
