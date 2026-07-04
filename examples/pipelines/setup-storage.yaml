@@ -1,0 +1,35 @@
+# setup-storage.yaml
+# Demuestra: paralelo real + parámetros CLI en steps independientes
+#
+# Configura discos en workers y masters en paralelo,
+# usando el mismo dispositivo pasado por CLI.
+#
+# Uso:
+#   ikctl --pipeline setup-storage -p DEVICE=/dev/sdb
+#
+# workers-storage y masters-storage no tienen dependencias entre sí
+# → se ejecutan en paralelo con --parallel-workers 2
+
+name: setup-storage
+
+steps:
+  - id: workers-storage
+    kit: parted
+    servers: workers
+    sudo: true
+    params:
+      - "{{ params.DEVICE }}"   # -p DEVICE=/dev/sdb
+
+  - id: masters-storage
+    kit: parted
+    servers: master
+    sudo: true
+    params:
+      - "{{ params.DEVICE }}"   # mismo device para ambos grupos
+
+  # resolv_conf espera a que ambos discos estén listos
+  - id: dns
+    kit: resolv_conf
+    servers: all-nodes
+    sudo: true
+    needs: [workers-storage, masters-storage]
