@@ -5,7 +5,7 @@ import logging
 import os
 
 from ikctl.executor.interface import IExecutor
-from ikctl.runner.base import IRunner, RunOptions, RunResult, resolve_sudo_password
+from ikctl.runner.base import IRunner, RunOptions, RunResult
 from ikctl.config.models import KitPipeline, ServerGroup
 
 
@@ -28,14 +28,9 @@ def _build_local_command(script_path: str, options: RunOptions, password: str) -
 class LocalRunner(IRunner):
     """Runs a kit locally using the provided executor."""
 
-    def __init__(self, executor: IExecutor, secrets: str = "") -> None:
-        """Create a LocalRunner backed by the given executor.
-
-        secrets is the content of the .secrets file, used for sudo password
-        when servers.password == 'no_pass'.
-        """
+    def __init__(self, executor: IExecutor) -> None:
+        """Create a LocalRunner backed by the given executor."""
         self._executor = executor
-        self._secrets = secrets
         self._logger = logging.getLogger(__name__)
 
     def run(self, kit: KitPipeline, servers: ServerGroup, options: RunOptions) -> list[RunResult]:
@@ -46,7 +41,7 @@ class LocalRunner(IRunner):
         all_stderr: list[str] = []
         success = True
 
-        password = resolve_sudo_password(servers, self._secrets)
+        password = servers.password if hasattr(servers, "password") else None
         for cmd in kit.pipeline:
             full_cmd = _build_local_command(cmd, options, password)
             stdout, stderr, exit_code = self._executor.execute(full_cmd)

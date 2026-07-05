@@ -86,13 +86,12 @@ def _build_runner(
 
     if mode == "local":
         executor = LocalExecutor(timeout=timeout_exec)
-        return LocalRunner(executor, secrets=secrets)
+        return LocalRunner(executor)
 
     parallel_workers = options.parallel_workers or 4
     return RemoteRunner(
         _make_connection_factory(servers, secrets, timeout_connect),
         max_workers=parallel_workers,
-        secrets=secrets,
     )
 
 
@@ -285,7 +284,6 @@ def main() -> None:
             max_workers=getattr(args, "parallel_workers", 4) or 4,
             mode=mode,
             timeout_exec=timeout_exec,
-            secrets=secrets,
         )
 
         _console.print(

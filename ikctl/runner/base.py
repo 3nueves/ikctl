@@ -7,17 +7,6 @@ from dataclasses import dataclass
 from ikctl.config.models import KitPipeline, ServerGroup
 
 
-def resolve_sudo_password(servers: ServerGroup, secrets: str) -> str:
-    """Resolve the actual sudo password from servers config + secrets.
-
-    When servers.password == 'no_pass', the real password lives in the .secrets file.
-    Otherwise, servers.password holds the real password directly.
-    """
-    if servers.password == "no_pass":
-        return secrets or ""
-    return servers.password or ""
-
-
 @dataclass
 class RunOptions:
     """Generic options for kit execution. Can be extended with custom fields as needed."""
