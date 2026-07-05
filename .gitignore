@@ -160,7 +160,6 @@ cython_debug/
 
 # custom
 .ssh/*
-__pycache__
 ikctl.egg-info
 dist
 kits

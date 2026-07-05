@@ -83,7 +83,7 @@ def test_run_uploads_files_and_executes_pipeline(kit, servers):
     result = results[0]
     assert result.host == "192.168.1.10"
     assert result.success is True
-    sftp_instance.upload.assert_called_once()
+    sftp_instance.smart_upload.assert_called_once()
     conn.exec_command.assert_called_once_with(
         "cd .ikctl/mykit; bash script.sh")
 
@@ -200,7 +200,7 @@ def test_remote_dir_uses_kit_name_not_file_path_directory():
 
     assert results[0].success is True
     # The upload destination must be under .ikctl/kubernetes/, not .ikctl/scripts/
-    call_args = sftp_instance.upload.call_args[0]
+    call_args = sftp_instance.smart_upload.call_args[0]
     assert call_args[1] == ".ikctl/kubernetes/install_kubernetes.sh", (
         f"Expected '.ikctl/kubernetes/install_kubernetes.sh', got '{call_args[1]}'"
     )

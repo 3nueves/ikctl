@@ -492,3 +492,32 @@ RF-4 parcialmente satisfecho: el label usa el IP/hostname (no un nombre legible)
 Documentado en design.md como decisión consciente; añadir nombres por host es feature futura.
 
 ### Estado: pendiente de aprobacion humana
+
+---
+
+## Sesion 2026-07-05 — Bugfix 32: sudo_password
+
+### Resumen
+
+- Diseñado e implementado `--sudo-password` CLI con precedencia: CLI > .secrets > servers.password.
+- Añadido campo `sudo_password: str | None = None` a `RunOptions` en `runner/base.py`.
+- Actualizados `runner/remote.py` y `runner/local.py` para usar `options.sudo_password` con fallback a `servers.password`.
+- Actualizado `orchestration/runner.py` para aceptar y pasar `sudo_password` a `step_options`.
+- Actualizado `pipeline.py` para resolver `sudo_password` con misma precedencia.
+- Actualizado `main.py`: flag `--sudo-password`, resolución de precedencia, pase a todos los caminos.
+- Modificado kit `create-user.sh` para usar parámetros posicionales (`$1`, `$2`, `$3`) en lugar de variables de entorno.
+- 282 tests pasan. Funcionalidad verificada con conexión SSH real.
+
+### Archivos modificados
+
+- `feature_list.json` — añadida feature #32
+- `progress/current.md` — actualizado durante la sesión
+- `ikctl/runner/base.py` — campo `sudo_password`
+- `ikctl/runner/remote.py` — usa `options.sudo_password`
+- `ikctl/runner/local.py` — usa `options.sudo_password`
+- `ikctl/main.py` — flag `--sudo-password`, resolución y pase
+- `ikctl/orchestration/runner.py` — acepta y pasa `sudo_password`
+- `ikctl/pipeline.py` — resuelve `sudo_password`
+- `kits/create-user/create-user.sh` — parámetros posicionales
+
+### Estado: done

@@ -23,6 +23,8 @@ class RunOptions:
     context: str | None = None
     list: str | None = None
     strict: bool = False
+    sudo_password: str | None = None
+    force_upload: bool = False
 
 
 @dataclass
