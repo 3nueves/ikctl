@@ -164,7 +164,6 @@ class Config:
         except FileNotFoundError as exc:
             self._logger.error("Secrets file not found: %s", exc)
             return "", path_secrets
-
         secrets_str = "".join(secrets).strip()
         return secrets_str, path_secrets
 
