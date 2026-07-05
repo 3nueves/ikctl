@@ -14,7 +14,7 @@ from ikctl.exceptions import KitNotFoundError, RunnerError, SSHConnectionError
 from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.connection.interface import IConnection
 from ikctl.executor.remote import RemoteExecutor
-from ikctl.runner.base import IRunner, RunOptions, RunResult
+from ikctl.runner.base import IRunner, RunOptions, RunResult, resolve_sudo_password
 from ikctl.transfer.sftp import SftpTransfer
 
 _console = Console(highlight=False)
@@ -42,14 +42,18 @@ class RemoteRunner(IRunner):
         self,
         connection_factory: Callable[[str], IConnection],
         max_workers: int = 4,
+        secrets: str = "",
     ) -> None:
         """Create a RemoteRunner using the given connection factory.
 
         The factory receives a hostname string and returns an IConnection.
         max_workers controls the maximum number of concurrent threads.
+        secrets is the content of the .secrets file, used for sudo password
+        when servers.password == 'no_pass'.
         """
         self._connection_factory = connection_factory
         self._max_workers = max_workers
+        self._secrets = secrets
         self._logger = logging.getLogger(__name__)
 
     def run(self, kit: KitPipeline, servers: ServerGroup, options: RunOptions) -> list[RunResult]:
@@ -140,8 +144,7 @@ class RemoteRunner(IRunner):
                     raise
 
             # Execute all pipeline steps
-            password = servers.password if hasattr(
-                servers, "password") else None
+            password = resolve_sudo_password(servers, self._secrets)
             for cmd in kit.pipeline:
                 remote_dir = f".ikctl/{kit.name}"
                 script = os.path.basename(cmd)

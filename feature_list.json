@@ -589,6 +589,26 @@
       ],
       "status": "in_progress",
       "type": "feature"
+    },
+    {
+      "id": 32,
+      "name": "sudo_secrets_resolution",
+      "title": "Bug: sudo usa 'no_pass' como contraseña en lugar del contenido de .secrets",
+      "description": "RemoteRunner y LocalRunner obtienen la contraseña de servers.password para sudo, pero cuando password=='no_pass' no resuelven el valor real desde .secrets. Pasar secrets a los runners y resolver la contraseña de sudo correctamente.",
+      "acceptance": [
+        "RemoteRunner.__init__ acepta secrets: str = '' y lo guarda",
+        "LocalRunner.__init__ acepta secrets: str = '' y lo guarda",
+        "Cuando servers.password == 'no_pass', el comando sudo usa secrets como contraseña",
+        "Cuando servers.password es un valor real (≠ 'no_pass'), el comando sudo usa servers.password",
+        "OrchestrationRunner acepta secrets y lo pasa a los runners internos",
+        "_build_runner() en main.py pasa secrets a los runners",
+        "tests/test_remote_runner.py cubre: sudo con no_pass usa secrets, sudo con password real usa password",
+        "tests/test_local_runner.py cubre: sudo con no_pass usa secrets",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
+      "type": "bugfix"
     }
   ]
 }

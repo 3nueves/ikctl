@@ -39,6 +39,7 @@ class OrchestrationRunner:
         max_workers: int = 4,
         mode: str = "remote",
         timeout_exec: float = 120.0,
+        secrets: str = "",
     ) -> None:
         """Initialise with resolved config and connection details."""
         self._config = config
@@ -46,6 +47,7 @@ class OrchestrationRunner:
         self._max_workers = max_workers
         self._mode = mode
         self._timeout_exec = timeout_exec
+        self._secrets = secrets
         self._logger = logging.getLogger(__name__)
 
     def run(
@@ -143,9 +145,13 @@ class OrchestrationRunner:
 
         if self._mode == "local":
             executor = LocalExecutor(timeout=self._timeout_exec)
-            runner = LocalRunner(executor)
+            runner = LocalRunner(executor, secrets=self._secrets)
         else:
-            runner = RemoteRunner(self._connection_factory, max_workers=self._max_workers)
+            runner = RemoteRunner(
+                self._connection_factory,
+                max_workers=self._max_workers,
+                secrets=self._secrets,
+            )
 
         try:
             run_results = runner.run(kit, servers, step_options)
