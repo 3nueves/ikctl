@@ -553,7 +553,7 @@
         "uv run pytest tests -v pasa sin errores",
         "./init.sh termina con [OK] Entorno listo"
       ],
-      "status": "in_progress",
+      "status": "done",
       "type": "bugfix"
     },
     {
@@ -569,7 +569,7 @@
         "Con --force-upload se omite la verificación y se suben todos los ficheros siempre",
         "tests/test_smart_upload.py cubre: fichero sin cambios (skip), fichero modificado (upload), fichero nuevo (upload), --force-upload (siempre sube)"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "type": "feature",
       "sdd": true
     },
@@ -587,8 +587,28 @@
         "uv run pytest tests -v pasa sin errores",
         "./init.sh termina con [OK] Entorno listo"
       ],
-      "status": "in_progress",
+      "status": "done",
       "type": "feature"
+    },
+    {
+      "id": 32,
+      "name": "sudo_password",
+      "title": "Sudo password independiente de la autenticación SSH",
+      "description": "La contraseña para sudo se resuelve con precedencia: --sudo-password CLI > .secrets > servers.password. Se separa conceptualmente de la contraseña de autenticación SSH, permitiendo usar clave SSH para conectar y password para sudo. Se añade el campo sudo_password a RunOptions y se resuelve en todos los caminos de ejecución (--install, --pipeline).",
+      "acceptance": [
+        "RunOptions tiene campo sudo_password: str | None = None",
+        "main.py acepta --sudo-password STRING como argumento CLI opcional",
+        "Precedencia de resolución: CLI > .secrets > servers.password > None (NOPASSWD)",
+        "remote.py usa options.sudo_password en lugar de servers.password para sudo",
+        "local.py usa options.sudo_password en lugar de servers.password para sudo",
+        "orchestration/runner.py pasa sudo_password a step_options del runner",
+        "pipeline.py resuelve sudo_password con la misma precedencia antes de ejecutar",
+        "Con --sudo-password o .secrets con password, sudo recibe la contraseña correctamente",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
     }
   ]
 }

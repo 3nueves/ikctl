@@ -127,11 +127,14 @@ class RemoteRunner(IRunner):
                 )
                 self._logger.info("UPLOAD: %s -> %s", local_path, remote_path)
                 try:
-                    sftp.upload(local_path, remote_path)
-                    if options.debug:
-                        progress.console.print(
-                            f"[bold cyan]{label}[/bold cyan] UPLOAD  {_escape_markup(fname):<40} [bold green]OK[/bold green]"
-                        )
+                    uploaded = sftp.smart_upload(
+                        local_path, remote_path, force=options.force_upload
+                    )
+                    action = "UPLOAD" if uploaded else "SKIP"
+                    status = "[bold green]OK[/bold green]" if uploaded else "[bold yellow]unchanged[/bold yellow]"
+                    progress.console.print(
+                        f"[bold cyan]{label}[/bold cyan] {action:<7} {_escape_markup(fname):<40} {status}"
+                    )
                 except Exception:
                     if options.debug:
                         progress.console.print(
@@ -140,8 +143,8 @@ class RemoteRunner(IRunner):
                     raise
 
             # Execute all pipeline steps
-            password = servers.password if hasattr(
-                servers, "password") else None
+            password = options.sudo_password if options.sudo_password else (
+                servers.password if hasattr(servers, "password") else None)
             for cmd in kit.pipeline:
                 remote_dir = f".ikctl/{kit.name}"
                 script = os.path.basename(cmd)

@@ -64,6 +64,13 @@ class Pipeline:
             pkey=servers_dict.get("pkey"),
         )
 
+        sudo_password = self.options.sudo_password
+        if not sudo_password:
+            sudo_password = self.secrets or None
+        if not sudo_password:
+            sudo_password = servers_dict.get("password") or None
+        self.options.sudo_password = sudo_password
+
         self._run()
 
     def _print_results(self, results: list[RunResult]) -> None:

@@ -41,7 +41,8 @@ class LocalRunner(IRunner):
         all_stderr: list[str] = []
         success = True
 
-        password = servers.password if hasattr(servers, "password") else None
+        password = options.sudo_password if options.sudo_password else (
+            servers.password if hasattr(servers, "password") else None)
         for cmd in kit.pipeline:
             full_cmd = _build_local_command(cmd, options, password)
             stdout, stderr, exit_code = self._executor.execute(full_cmd)

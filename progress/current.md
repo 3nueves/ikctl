@@ -4,18 +4,19 @@
 
 ## Feature in progress
 
-- **id:** 31
-- **name:** strict_mode
+- **id:** 28
+- **name:** smart_upload
 - **type:** feature
-- **started:** 2026-06-15
+- **started:** 2026-07-05
 
 ## Plan
 
-1. Add `strict: bool = False` to `RunOptions` dataclass in `ikctl/runner/base.py`.
-2. Add `--strict` flag to argparse in `ikctl/main.py` and wire into `RunOptions`.
-3. Update `_build_remote_command()` in `ikctl/runner/remote.py` to use `bash -eo pipefail` when `options.strict` is True.
-4. Create `tests/test_strict_mode.py` with all acceptance criteria tests.
-5. Run `uv run pytest tests/test_strict_mode.py -v` and `uv run pytest tests -q --tb=no` — all green.
+1. Modificar `SftpTransfer` (sftp.py): guardar `self._connection`, añadir `smart_upload()`, `_sha256()`, `_remote_sha256()`
+2. Añadir `force_upload: bool = False` a `RunOptions` en `runner/base.py`
+3. Añadir `--force-upload` flag en `main.py` y pasarlo a `RunOptions`
+4. Modificar `RemoteRunner._run_on_host()` para usar `sftp.smart_upload()` y mostrar SKIP/UPLOAD
+5. Crear `tests/test_smart_upload.py` con 5 tests (mockeando sin conexiones reales)
+6. Verificar con `uv run pytest tests -v` y `./init.sh`
 
 ## Blocks
 

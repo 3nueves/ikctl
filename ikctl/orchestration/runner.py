@@ -39,6 +39,7 @@ class OrchestrationRunner:
         max_workers: int = 4,
         mode: str = "remote",
         timeout_exec: float = 120.0,
+        sudo_password: str | None = None,
     ) -> None:
         """Initialise with resolved config and connection details."""
         self._config = config
@@ -46,6 +47,7 @@ class OrchestrationRunner:
         self._max_workers = max_workers
         self._mode = mode
         self._timeout_exec = timeout_exec
+        self._sudo_password = sudo_password
         self._logger = logging.getLogger(__name__)
 
     def run(
@@ -139,6 +141,7 @@ class OrchestrationRunner:
             mode=self._mode,
             dry_run=getattr(base_options, "dry_run", False),
             parallel_workers=self._max_workers,
+            sudo_password=self._sudo_password,
         )
 
         if self._mode == "local":

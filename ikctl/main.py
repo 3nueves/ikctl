@@ -195,6 +195,17 @@ def main() -> None:
         default=False,
         help="Run scripts with bash -eo pipefail (fail on any command error or pipe failure)",
     )
+    parser.add_argument(
+        "--sudo-password",
+        default=None,
+        help="Password for sudo (falls back to .secrets, then servers.password)",
+    )
+    parser.add_argument(
+        "--force-upload",
+        action="store_true",
+        default=False,
+        help="Upload all files even if unchanged (skip SHA256 verification)",
+    )
     args = parser.parse_args()
 
     _actionable = (args.install, args.pipeline, args.describe,
@@ -251,6 +262,12 @@ def main() -> None:
     timeout_connect = args.timeout_connect if args.timeout_connect is not None else data.load_timeout_connect()
     timeout_exec = args.timeout_exec if args.timeout_exec is not None else data.load_timeout_exec()
 
+    sudo_password = args.sudo_password
+    if not sudo_password:
+        sudo_password = secrets or None
+    if not sudo_password:
+        sudo_password = servers_dict.get("password") or None
+
     if args.pipeline:
         try:
             loader = ConfigLoader(config_path=data.path_config_file)
@@ -284,6 +301,7 @@ def main() -> None:
             max_workers=getattr(args, "parallel_workers", 4) or 4,
             mode=mode,
             timeout_exec=timeout_exec,
+            sudo_password=sudo_password,
         )
 
         _console.print(
@@ -350,6 +368,8 @@ def main() -> None:
         context=getattr(args, "context", None),
         list=getattr(args, "list", None),
         strict=getattr(args, "strict", False),
+        sudo_password=sudo_password,
+        force_upload=getattr(args, "force_upload", False),
     )
     runner = _build_runner(run_options, servers, secrets,
                            timeout_connect, timeout_exec, config_mode)
