@@ -71,6 +71,19 @@ class SSHOptions:
                 proxy_command=servers.proxy_command,
                 host_key_policy=servers.host_key_policy,
             )
+        if servers.password == "no_pass":
+            return cls(
+                hostname=host,
+                port=servers.port,
+                username=servers.user,
+                password=secrets or None,
+                key_filename=None,
+                allow_agent=False,
+                look_for_keys=False,
+                timeout=timeout,
+                proxy_command=servers.proxy_command,
+                host_key_policy=servers.host_key_policy,
+            )
         return cls(
             hostname=host,
             port=servers.port,
