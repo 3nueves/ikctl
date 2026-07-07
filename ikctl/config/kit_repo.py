@@ -82,6 +82,8 @@ class KitRepository:
                 outputs: dict[str, str] = {str(k): str(
                     v) for k, v in raw_outputs.items()}
 
+                remote_dir: str | None = kit_config["kits"].get("remote_dir", None)
+
                 self._logger.debug(
                     "Resolved kit '%s': %d uploads, %d pipeline steps, %d outputs",
                     name,
@@ -89,6 +91,6 @@ class KitRepository:
                     len(pipeline),
                     len(outputs),
                 )
-                return KitPipeline(uploads=uploads, pipeline=pipeline, outputs=outputs, name=name)
+                return KitPipeline(uploads=uploads, pipeline=pipeline, outputs=outputs, name=name, remote_dir=remote_dir)
 
         raise KitNotFoundError(f"Kit '{name}' not found under '{path_kits}'")

@@ -521,3 +521,36 @@ Documentado en design.md como decisión consciente; añadir nombres por host es 
 - `kits/create-user/create-user.sh` — parámetros posicionales
 
 ### Estado: done
+
+---
+
+## Sesion 2026-07-05 — Feature 33: remote_dir_configurable
+
+### Resumen
+
+- Feature implementada completamente por agente anterior.
+- `remote_dir` configurable a nivel de kit (ikctl.yaml) y CLI (--remote-dir).
+- Helper `resolve_remote_dir()` en `runner/utils.py`.
+- 294 tests pasan. init.sh verde.
+
+### Estado: done
+
+---
+
+## Sesion 2026-07-05 — Bugfix 34: fix_remote_dir_creation
+
+### Resumen
+
+- Bug: la logica de creacion de directorios en `RemoteRunner._run_on_host()` hardcodeaba `.ikctl` como directorio padre, fallando para `remote_dir` personalizado (ej. `/opt/myapp`).
+- Test-first: escrito `test_remote_runner_creates_parent_dir_for_custom_remote_dir` que falla con el codigo actual (confirmado: creaba `.ikctl` y `/opt/myapp` en lugar de `/opt` y `/opt/myapp`).
+- Fix: sustituida la logica por `os.path.dirname(remote_dir)` para resolver el padre, luego crear padre y `remote_dir` con `try/except OSError` (ignora si ya existe).
+- Anyadido `test_remote_runner_creates_ikctl_parent_for_default_remote_dir` para verificar ruta default.
+- 296 tests pasan. init.sh verde.
+
+### Archivos modificados
+
+- `ikctl/runner/remote.py` — fix en lineas 111-122 (creacion de directorios)
+- `tests/test_remote_dir.py` — 2 tests nuevos
+- `feature_list.json` — status de #34 cambiado a `in_progress`
+
+### Estado: done

@@ -206,6 +206,13 @@ def main() -> None:
         default=False,
         help="Upload all files even if unchanged (skip SHA256 verification)",
     )
+    parser.add_argument(
+        "--remote-dir",
+        type=str,
+        default=None,
+        dest="remote_dir",
+        help="Remote directory for uploads (overrides kit's remote_dir in ikctl.yaml)",
+    )
     args = parser.parse_args()
 
     _actionable = (args.install, args.pipeline, args.describe,
@@ -370,6 +377,7 @@ def main() -> None:
         strict=getattr(args, "strict", False),
         sudo_password=sudo_password,
         force_upload=getattr(args, "force_upload", False),
+        remote_dir=getattr(args, "remote_dir", None),
     )
     runner = _build_runner(run_options, servers, secrets,
                            timeout_connect, timeout_exec, config_mode)

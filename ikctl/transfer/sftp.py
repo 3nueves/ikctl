@@ -1,6 +1,7 @@
 """SFTP file transfer using an IConnection."""
 from __future__ import annotations
 
+import errno
 import hashlib
 import logging
 
@@ -61,6 +62,21 @@ class SftpTransfer:
         """Create a directory on the remote host."""
         self._logger.info("Creating remote directory: %s", path)
         self._sftp.mkdir(path)
+
+    def ensure_dir(self, path: str) -> None:
+        """Recursively create remote directory (mkdir -p). No-op if already exists.
+
+        Tries SFTP mkdir first; falls back to ssh "mkdir -p" for multi-level
+        paths or when SFTP lacks permission.
+        """
+        try:
+            self._sftp.mkdir(path)
+            self._logger.debug("Created remote directory: %s", path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST:
+                return
+            self._logger.debug("SFTP mkdir failed, falling back to ssh mkdir -p: %s", exc)
+            self._connection.exec_command(f"mkdir -p {path}")
 
     def list_dir(self, path: str = ".") -> list[str]:
         """Return a list of file names in the remote directory."""

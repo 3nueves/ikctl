@@ -15,6 +15,7 @@ from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.connection.interface import IConnection
 from ikctl.executor.remote import RemoteExecutor
 from ikctl.runner.base import IRunner, RunOptions, RunResult
+from ikctl.runner.utils import resolve_remote_dir
 from ikctl.transfer.sftp import SftpTransfer
 
 _console = Console(highlight=False)
@@ -103,22 +104,11 @@ class RemoteRunner(IRunner):
             success = True
 
             # Upload all kit files
+            remote_dir = resolve_remote_dir(kit, options)
             for local_path in kit.uploads:
-                remote_dir = f".ikctl/{kit.name}"
                 remote_path = f"{remote_dir}/{os.path.basename(local_path)}"
 
-                # Ensure remote directory exists
-                existing = sftp.list_dir(
-                    ".ikctl") if ".ikctl" in sftp.list_dir() else []
-                if kit.name not in existing:
-                    try:
-                        sftp.create_dir(".ikctl")
-                    except OSError:
-                        pass
-                    try:
-                        sftp.create_dir(remote_dir)
-                    except OSError:
-                        pass
+                sftp.ensure_dir(remote_dir)
 
                 fname = os.path.basename(local_path)
                 progress.update(
@@ -146,7 +136,6 @@ class RemoteRunner(IRunner):
             password = options.sudo_password if options.sudo_password else (
                 servers.password if hasattr(servers, "password") else None)
             for cmd in kit.pipeline:
-                remote_dir = f".ikctl/{kit.name}"
                 script = os.path.basename(cmd)
                 full_cmd = _build_remote_command(
                     remote_dir, script, options, password)

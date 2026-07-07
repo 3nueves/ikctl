@@ -609,6 +609,44 @@
       ],
       "status": "done",
       "type": "bugfix"
+    },
+    {
+      "id": 33,
+      "name": "remote_dir_configurable",
+      "title": "Directorio remoto de uploads configurable por kit y por CLI",
+      "description": "Los archivos de un kit se suben a un directorio remoto con precedencia: --remote-dir CLI > remote_dir en ikctl.yaml > default .ikctl/<kit.name>/. El campo remote_dir en ikctl.yaml permite que un kit declare dónde quiere sus archivos (útil para configs que deben ir a rutas como /etc/nginx/). El flag --remote-dir permite override global desde CLI para debugging o pruebas.",
+      "acceptance": [
+        "KitPipeline tiene campo remote_dir: str | None = None",
+        "kit_repo.py lee remote_dir del ikctl.yaml si está presente",
+        "RunOptions tiene campo remote_dir: str | None = None",
+        "main.py acepta --remote-dir STRING (default None)",
+        "RemoteRunner resuelve remote_dir con precedencia: CLI > ikctl.yaml > .ikctl/<kit.name>/",
+        "DryRunRunner usa el mismo remote_dir resuelto",
+        "Si no se especifica remote_dir ni en ikctl.yaml ni CLI, el comportamiento es idéntico al actual (.ikctl/<kit.name>/)",
+        "tests/test_remote_dir.py cubre: default, remote_dir en ikctl.yaml, --remote-dir CLI, CLI override sobre ikctl.yaml",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "feature",
+      "sdd": true
+    },
+    {
+      "id": 34,
+      "name": "fix_remote_dir_creation",
+      "title": "Corregir creación de directorios remotos para remote_dir configurable",
+      "description": "La lógica de creación de directorios en RemoteRunner es confusa y falla silenciosamente. Simplificar para crear el directorio padre de remote_dir y luego remote_dir本身. Funciona para rutas default (.ikctl/<kit.name>) y personalizadas (/opt/myapp).",
+      "acceptance": [
+        "RemoteRunner crea el directorio padre de remote_dir antes de crear remote_dir",
+        "Si remote_dir es .ikctl/<kit.name>, crea .ikctl primero",
+        "Si remote_dir es /opt/myapp, crea /opt primero (si no existe)",
+        "Los errores de creación de directorios no se tragan silenciosamente (solo se ignora si ya existe)",
+        "tests/test_remote_dir.py cubre: creación de directorios default y personalizados",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "in_progress",
+      "type": "bugfix"
     }
   ]
 }

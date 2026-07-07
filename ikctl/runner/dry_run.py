@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ikctl.config.models import KitPipeline, ServerGroup
 from ikctl.runner.base import IRunner, RunOptions, RunResult
+from ikctl.runner.utils import resolve_remote_dir
 
 
 def _censor(command: str) -> str:
@@ -39,10 +40,11 @@ class DryRunRunner(IRunner):
     def run(self, kit: KitPipeline, servers: ServerGroup, options: RunOptions) -> list[RunResult]:
         """Return RunResults whose stdout contains the preview lines for each host."""
         results: list[RunResult] = []
+        remote_dir = resolve_remote_dir(kit, options)
         for host in servers.hosts:
             lines = [f"\n[DRY RUN] Host: {host}"]
             for upload in kit.uploads:
-                remote = f".ikctl/{Path(upload).parent.name}/{Path(upload).name}"
+                remote = f"{remote_dir}/{Path(upload).name}"
                 lines.append(f"[DRY RUN] UPLOAD: {upload} → {remote}")
             for cmd in kit.pipeline:
                 lines.append(

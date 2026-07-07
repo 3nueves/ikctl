@@ -97,11 +97,10 @@ class Pipeline:
 
         if self.options.install:
             try:
-                uploads, pipeline_steps = self.data.extract_config_kits(
+                kit = self.data.extract_config_kits(
                     self.config_kits, self.options.install)
             except KitNotFoundError as exc:
                 print(f"\nError: {exc}\n", file=sys.stderr)
                 sys.exit(1)
-            kit = KitPipeline(uploads=uploads, pipeline=pipeline_steps)
             results = self._runner.run(kit, self.servers, self.options)
             self._print_results(results)
