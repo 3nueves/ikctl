@@ -569,7 +569,7 @@
         "Con --force-upload se omite la verificación y se suben todos los ficheros siempre",
         "tests/test_smart_upload.py cubre: fichero sin cambios (skip), fichero modificado (upload), fichero nuevo (upload), --force-upload (siempre sube)"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "type": "feature",
       "sdd": true
     },
