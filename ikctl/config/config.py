@@ -124,14 +124,13 @@ class Config:
             "password": password,
         }
 
-    def extract_config_kits(self, config: object, name_kit: str) -> tuple:
-        """Extracts (uploads, pipeline) lists for the named kit using auto-discovery."""
+    def extract_config_kits(self, config: object, name_kit: str) -> KitPipeline:
+        """Returns the KitPipeline for the named kit using auto-discovery."""
         repo = KitRepository(self._ikctl_config)
         try:
-            kit_pipeline = repo.resolve(name_kit)
+            return repo.resolve(name_kit)
         except KitNotFoundError:
             raise
-        return kit_pipeline.uploads, kit_pipeline.pipeline
 
     def load_path_pipelines(self) -> str | None:
         """Returns path_pipelines for the active context, or None if not set."""
@@ -168,7 +167,7 @@ class Config:
         return secrets_str, path_secrets
 
     # Keep old typo names as aliases so any existing callers still work.
-    def extrac_config_kits(self, config: object, name_kit: str) -> tuple:
+    def extrac_config_kits(self, config: object, name_kit: str) -> KitPipeline:
         """Alias for extract_config_kits (typo preserved for backward compatibility)."""
         return self.extract_config_kits(config, name_kit)
 

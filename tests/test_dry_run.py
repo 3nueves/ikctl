@@ -17,6 +17,7 @@ def kit():
         uploads=["/home/user/kits/mykit/deploy.sh"],
         pipeline=["/home/user/kits/mykit/deploy.sh",
                   "/home/user/kits/mykit/service.sh"],
+        name="mykit",
     )
 
 
@@ -68,7 +69,7 @@ def test_dry_run_runner_prints_exec_for_each_pipeline_step(kit, single_server):
 
 
 def test_dry_run_runner_censors_passwords_in_commands(kit, single_server):
-    options = SimpleNamespace(sudo="sudo", parameter=None)
+    options = RunOptions(sudo=True, parameter=None)
     runner = DryRunRunner()
     results = runner.run(kit, single_server, options)
 

@@ -25,6 +25,7 @@ class KitPipeline:
     pipeline: list[str]
     outputs: dict[str, str] = field(default_factory=dict)
     name: str = ""
+    remote_dir: str | None = None
 
 
 @dataclass(frozen=True)

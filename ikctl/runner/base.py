@@ -25,6 +25,7 @@ class RunOptions:
     strict: bool = False
     sudo_password: str | None = None
     force_upload: bool = False
+    remote_dir: str | None = None
 
 
 @dataclass
