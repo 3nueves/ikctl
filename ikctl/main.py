@@ -213,6 +213,34 @@ def main() -> None:
         dest="remote_dir",
         help="Remote directory for uploads (overrides kit's remote_dir in ikctl.yaml)",
     )
+    parser.add_argument(
+        "--host",
+        action="append",
+        default=None,
+        dest="host",
+        help="Remote host (repeatable). When used, --user/--password/--port/--key replace servers/config.yaml",
+    )
+    parser.add_argument(
+        "--user",
+        default="root",
+        help="SSH user (default: root, only with --host)",
+    )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="SSH password (only with --host)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=22,
+        help="SSH port (default: 22, only with --host)",
+    )
+    parser.add_argument(
+        "--key",
+        default=None,
+        help="Path to SSH private key (only with --host)",
+    )
     args = parser.parse_args()
 
     _actionable = (args.install, args.pipeline, args.describe,
@@ -244,36 +272,51 @@ def main() -> None:
         logging.getLogger("paramiko.transport").setLevel(logging.WARNING)
 
     data = Config()
-    try:
-        config_servers, _ = data.load_config_file_servers()
-    except ConfigError as exc:
-        print(f"\nError: {exc}\n", file=sys.stderr)
-        sys.exit(1)
-    secrets, _ = data.extract_secrets()
-    config_mode = data.load_config_file_mode()
 
-    try:
-        servers_dict = data.extract_config_servers(config_servers, args.name)
-    except ServerNotFoundError as exc:
-        print(f"\nError: {exc}\n", file=sys.stderr)
-        sys.exit(1)
+    if args.host:
+        servers = ServerGroup(
+            user=args.user,
+            port=args.port,
+            hosts=args.host,
+            password=args.password or None,
+            pkey=args.key or None,
+        )
+        secrets = None
+        config_mode = "remote"
+        timeout_connect = args.timeout_connect if args.timeout_connect is not None else 30.0
+        timeout_exec = args.timeout_exec if args.timeout_exec is not None else 120.0
+        sudo_password = args.sudo_password or args.password or None
+    else:
+        try:
+            config_servers, _ = data.load_config_file_servers()
+        except ConfigError as exc:
+            print(f"\nError: {exc}\n", file=sys.stderr)
+            sys.exit(1)
+        secrets, _ = data.extract_secrets()
+        config_mode = data.load_config_file_mode()
 
-    servers = ServerGroup(
-        user=servers_dict["user"],
-        port=servers_dict["port"],
-        hosts=servers_dict["hosts"],
-        password=servers_dict["password"],
-        pkey=servers_dict.get("pkey"),
-    )
+        try:
+            servers_dict = data.extract_config_servers(config_servers, args.name)
+        except ServerNotFoundError as exc:
+            print(f"\nError: {exc}\n", file=sys.stderr)
+            sys.exit(1)
 
-    timeout_connect = args.timeout_connect if args.timeout_connect is not None else data.load_timeout_connect()
-    timeout_exec = args.timeout_exec if args.timeout_exec is not None else data.load_timeout_exec()
+        servers = ServerGroup(
+            user=servers_dict["user"],
+            port=servers_dict["port"],
+            hosts=servers_dict["hosts"],
+            password=servers_dict["password"],
+            pkey=servers_dict.get("pkey"),
+        )
 
-    sudo_password = args.sudo_password
-    if not sudo_password:
-        sudo_password = secrets or None
-    if not sudo_password:
-        sudo_password = servers_dict.get("password") or None
+        timeout_connect = args.timeout_connect if args.timeout_connect is not None else data.load_timeout_connect()
+        timeout_exec = args.timeout_exec if args.timeout_exec is not None else data.load_timeout_exec()
+
+        sudo_password = args.sudo_password
+        if not sudo_password:
+            sudo_password = secrets or None
+        if not sudo_password:
+            sudo_password = servers_dict.get("password") or None
 
     if args.pipeline:
         try:
