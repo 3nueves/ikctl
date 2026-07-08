@@ -109,7 +109,7 @@ def main() -> None:
     )
     parser.add_argument("-i", "--install", help="Select kit to use")
     parser.add_argument("-n", "--name", help="Name of the groups servers")
-    parser.add_argument("-p", "--parameter", nargs="*", help="Add parameters")
+    parser.add_argument("-p", "--parameter", action="append", default=[], help="Add parameters (-p KEY=VALUE, repeatable)")
     parser.add_argument(
         "-s", "--sudo", choices=["sudo"], help="exec from sudo")
     parser.add_argument("-c", "--context", help="Select context")
