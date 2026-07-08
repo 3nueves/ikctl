@@ -425,7 +425,12 @@ def main() -> None:
     runner = _build_runner(run_options, servers, secrets,
                            timeout_connect, timeout_exec, config_mode)
     try:
-        Pipeline(runner=runner, options=run_options)
+        Pipeline(
+            runner=runner,
+            options=run_options,
+            servers=servers if args.host else None,
+            sudo_password=sudo_password if args.host else None,
+        )
     except KeyboardInterrupt:
         print("\nInterrumpido por el usuario.\n", file=sys.stderr)
         sys.exit(130)

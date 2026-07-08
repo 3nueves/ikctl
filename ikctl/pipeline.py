@@ -21,8 +21,18 @@ _error_console = Console(stderr=True)
 class Pipeline:
     """Orchestrates the process of installing kits on remote or local servers."""
 
-    def __init__(self, runner: IRunner, options: RunOptions) -> None:
-        """Initialise Pipeline with an already-constructed runner and parsed options."""
+    def __init__(
+        self,
+        runner: IRunner,
+        options: RunOptions,
+        servers: ServerGroup | None = None,
+        sudo_password: str | None = None,
+    ) -> None:
+        """Initialise Pipeline with an already-constructed runner and parsed options.
+
+        If *servers* is provided (from --host or pre-resolved), it skips loading
+        servers/config.yaml. Similarly, *sudo_password* can be pre-resolved.
+        """
         self._logger = logging.getLogger(__name__)
         self._runner = runner
         self.options = options
@@ -30,46 +40,52 @@ class Pipeline:
         self.data = Config()
 
         self.config_kits, self.path_kits = self.data.load_config_file_kits()
-        self.config_servers, self.path_servers = self.data.load_config_file_servers()
         self.config_mode = self.data.load_config_file_mode()
-        self.secrets, self.path_secrets = self.data.extract_secrets()
 
         self.context = Context()
         self.config_contexts = self.context.config
 
+        if servers is not None:
+            self.servers = servers
+            if sudo_password is not None:
+                self.options.sudo_password = sudo_password
+        else:
+            self.config_servers, self.path_servers = self.data.load_config_file_servers()
+            self.secrets, self.path_secrets = self.data.extract_secrets()
+
+            try:
+                servers_dict = self.data.extract_config_servers(
+                    self.config_servers, self.options.name)
+            except ServerNotFoundError as exc:
+                print(f"\nError: {exc}\n", file=sys.stderr)
+                sys.exit(1)
+
+            self.servers = ServerGroup(
+                user=servers_dict["user"],
+                port=servers_dict["port"],
+                hosts=servers_dict["hosts"],
+                password=servers_dict["password"],
+                pkey=servers_dict.get("pkey"),
+            )
+
+            sudo_password = self.options.sudo_password
+            if not sudo_password:
+                sudo_password = self.secrets or None
+            if not sudo_password:
+                sudo_password = servers_dict.get("password") or None
+            self.options.sudo_password = sudo_password
+
         self.view = Show(
-            list(self.config_kits["kits"]),
-            self.path_kits,
-            list(self.config_servers["servers"]),
-            self.path_servers,
+            list(getattr(self, 'config_kits', {}).get("kits", [])),
+            getattr(self, 'path_kits', ""),
+            list(getattr(self, 'config_servers', {"servers": []})["servers"]),
+            getattr(self, 'path_servers', ""),
             self.config_contexts,
             self.config_mode,
-            self.path_secrets,
+            getattr(self, 'path_secrets', ""),
             path_pipelines=self.data.load_path_pipelines(),
             kit_pipelines=self.data.load_kit_pipelines(),
         )
-
-        try:
-            servers_dict = self.data.extract_config_servers(
-                self.config_servers, self.options.name)
-        except ServerNotFoundError as exc:
-            print(f"\nError: {exc}\n", file=sys.stderr)
-            sys.exit(1)
-
-        self.servers = ServerGroup(
-            user=servers_dict["user"],
-            port=servers_dict["port"],
-            hosts=servers_dict["hosts"],
-            password=servers_dict["password"],
-            pkey=servers_dict.get("pkey"),
-        )
-
-        sudo_password = self.options.sudo_password
-        if not sudo_password:
-            sudo_password = self.secrets or None
-        if not sudo_password:
-            sudo_password = servers_dict.get("password") or None
-        self.options.sudo_password = sudo_password
 
         self._run()
 
