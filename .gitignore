@@ -158,8 +158,12 @@ cython_debug/
 # ruff
 .ruff_cache/
 
+# macOS
+.DS_Store
+
 # custom
 .ssh/*
 ikctl.egg-info
 dist
 kits
+build
