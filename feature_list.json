@@ -676,7 +676,7 @@
         "./init.sh termina con [OK] Entorno listo"
       ],
       "sdd": true,
-      "status": "in_progress",
+      "status": "done",
       "type": "feature"
     },
     {
@@ -698,7 +698,7 @@
         "uv run pytest tests -v pasa sin errores",
         "./init.sh termina con [OK] Entorno listo"
       ],
-      "status": "pending",
+      "status": "done",
       "type": "bugfix"
     },
     {
@@ -716,7 +716,7 @@
         "ruff check ikctl tests no introduce errores nuevos en los ficheros tocados",
         "Verificado end-to-end contra un pipeline real (kits-mdc/pipelines/install-mdc.yaml, 20 steps): ikctl --pipeline ... --dry-run ya no lanza AttributeError y resuelve/previsualiza cada step (los únicos steps que no completan en --dry-run son los que dependen de un output KEY=VALUE real que DryRunRunner no genera, lo cual es el comportamiento esperado, no un bug)"
       ],
-      "status": "pending",
+      "status": "done",
       "type": "bugfix"
     }
   ]

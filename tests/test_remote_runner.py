@@ -31,9 +31,18 @@ def multi_servers():
     return ServerGroup(user="admin", port=22, hosts=["host1", "host2"])
 
 
-def _make_connection(exec_result=("output\n", "", 0)):
+def _make_connection(exec_result=("output\n", "", 0), invoke_callbacks=False):
     conn = MagicMock()
-    conn.exec_command.return_value = exec_result
+    stdout, stderr, exit_code = exec_result
+
+    def exec_command_side_effect(command, on_stdout=None, on_stderr=None):
+        if invoke_callbacks and on_stdout is not None and stdout:
+            on_stdout(stdout)
+        if invoke_callbacks and on_stderr is not None and stderr:
+            on_stderr(stderr)
+        return stdout, stderr, exit_code
+
+    conn.exec_command.side_effect = exec_command_side_effect
     sftp_client = MagicMock()
     sftp_client.listdir.return_value = []
     conn.open_sftp.return_value = sftp_client
@@ -84,8 +93,8 @@ def test_run_uploads_files_and_executes_pipeline(kit, servers):
     assert result.host == "192.168.1.10"
     assert result.success is True
     sftp_instance.smart_upload.assert_called_once()
-    conn.exec_command.assert_called_once_with(
-        "cd .ikctl/mykit; bash script.sh")
+    args, kwargs = conn.exec_command.call_args
+    assert args[0] == "cd .ikctl/mykit; bash script.sh"
 
 
 def test_run_raises_kit_not_found_for_empty_kit(empty_kit, servers):
@@ -116,7 +125,7 @@ def test_run_calls_connection_close_when_connection_factory_raises(kit, servers)
     closed = []
 
     class FailingConn:
-        def exec_command(self, cmd):
+        def exec_command(self, cmd, on_stdout=None, on_stderr=None):
             raise RuntimeError("SSH error")
 
         def open_sftp(self):
@@ -289,7 +298,7 @@ def test_stderr_shown_on_failure_without_debug(kit, servers):
 
 def test_stderr_shown_with_stderr_flag(kit, servers):
     """When a step fails with stderr_output=True, stderr lines appear in console output."""
-    conn = _make_connection(exec_result=("", "permission denied\nbad exit", 1))
+    conn = _make_connection(exec_result=("", "permission denied\nbad exit", 1), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 
@@ -326,7 +335,7 @@ def test_no_stdout_without_stdout_flag(kit, servers):
 
 def test_stdout_shown_with_stdout_flag(kit, servers):
     """With stdout_output=True, host command stdout appears in console output."""
-    conn = _make_connection(exec_result=("host_specific_output_line", "", 0))
+    conn = _make_connection(exec_result=("host_specific_output_line", "", 0), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 
@@ -350,7 +359,7 @@ def test_stdout_lines_prefixed_with_host_label():
         pipeline=["/local/kits/mykit/script.sh"],
     )
     servers = ServerGroup(user="admin", port=22, hosts=["10.30.0.53"])
-    conn = _make_connection(exec_result=("hello from host", "", 0))
+    conn = _make_connection(exec_result=("hello from host", "", 0), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 
 from ikctl.connection.interface import IConnection
 from ikctl.executor.interface import IExecutor
@@ -21,8 +22,17 @@ class RemoteExecutor(IExecutor):
         self._connection = connection
         self._logger = logging.getLogger(__name__)
 
-    def execute(self, command: str) -> tuple[str, str, int]:
-        """Execute a command remotely. Returns (stdout, stderr, exit_code)."""
+    def execute(
+        self,
+        command: str,
+        on_stdout: Callable[[str], None] | None = None,
+        on_stderr: Callable[[str], None] | None = None,
+    ) -> tuple[str, str, int]:
+        """Execute a command remotely. Returns (stdout, stderr, exit_code).
+
+        Propagates optional streaming callbacks to the underlying connection.
+        """
         self._logger.info("EXEC: %s", _censor(command))
-        stdout, stderr, exit_code = self._connection.exec_command(command)
+        stdout, stderr, exit_code = self._connection.exec_command(
+            command, on_stdout=on_stdout, on_stderr=on_stderr)
         return stdout, stderr, exit_code

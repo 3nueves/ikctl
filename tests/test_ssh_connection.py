@@ -1,6 +1,8 @@
 """Tests for SSHConnection."""
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import paramiko
@@ -29,6 +31,42 @@ def _make_client_mock():
     sftp = MagicMock()
     client.open_sftp.return_value = sftp
     return client
+
+
+def _make_deadlock_channel(data_fragments: list[bytes], exit_status: int = 0):
+    """Build a channel mock that simulates a remote process producing output
+    in fragments before the exit status becomes available.
+
+    The first len(fragments) calls to recv_ready() return True, then False.
+    exit_status_ready() returns False until all fragments have been consumed,
+    then True.
+    """
+    channel = MagicMock()
+    fragment_iter = iter(data_fragments)
+    consumed = {"count": 0, "exit_calls": 0}
+
+    def recv_ready() -> bool:
+        return consumed["count"] < len(data_fragments)
+
+    def recv(_size: int) -> bytes:
+        try:
+            chunk = next(fragment_iter)
+            consumed["count"] += 1
+            return chunk
+        except StopIteration:
+            return b""
+
+    def exit_status_ready() -> bool:
+        consumed["exit_calls"] += 1
+        return consumed["count"] >= len(data_fragments)
+
+    channel.recv_ready.side_effect = recv_ready
+    channel.recv.side_effect = recv
+    channel.recv_stderr_ready.return_value = False
+    channel.recv_stderr.return_value = b""
+    channel.exit_status_ready.side_effect = exit_status_ready
+    channel.recv_exit_status.return_value = exit_status
+    return channel
 
 
 def _patch_transport(transport_mock):
@@ -125,12 +163,16 @@ def test_exec_command_returns_stdout_stderr_exit_code(mock_client_cls):
     mock_client = _make_client_mock()
     mock_client_cls.return_value = mock_client
 
+    channel = _make_deadlock_channel([b"hello\n"])
+
     stdout_mock = MagicMock()
-    stdout_mock.read.return_value = b"hello\n"
-    stdout_mock.channel.recv_exit_status.return_value = 0
+    stdout_mock.channel = channel
 
     stderr_mock = MagicMock()
-    stderr_mock.read.return_value = b""
+    stderr_mock.channel = MagicMock()
+    stderr_mock.channel.exit_status_ready.return_value = True
+    stderr_mock.channel.recv_stderr_ready.return_value = False
+    stderr_mock.channel.recv_stderr.return_value = b""
 
     mock_client.exec_command.return_value = (MagicMock(), stdout_mock, stderr_mock)
 
@@ -282,6 +324,97 @@ def test_no_auth_method_raises_ssh_connection_error(mock_client_cls):
         )
         with pytest.raises(SSHConnectionError):
             SSHConnection(opts)
+
+
+# ---------------------------------------------------------------------------
+# Streaming / deadlock tests
+# ---------------------------------------------------------------------------
+
+@patch("ikctl.connection.ssh.paramiko.SSHClient")
+def test_exec_command_streams_output_via_callbacks(mock_client_cls):
+    """exec_command() invokes on_stdout/on_stderr callbacks in real time."""
+    transport = _make_transport_mock()
+    mock_client = _make_client_mock()
+    mock_client_cls.return_value = mock_client
+
+    channel = _make_deadlock_channel([b"line1\n", b"line2\n", b"line3\n"])
+
+    stdout_mock = MagicMock()
+    stdout_mock.channel = channel
+
+    stderr_mock = MagicMock()
+    stderr_mock.channel = MagicMock()
+    stderr_mock.channel.recv_stderr_ready.return_value = False
+    stderr_mock.channel.recv_stderr.return_value = b""
+
+    mock_client.exec_command.return_value = (MagicMock(), stdout_mock, stderr_mock)
+
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="pw", allow_agent=False)
+        conn = SSHConnection(opts)
+
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+
+    def on_stdout(line: str) -> None:
+        stdout_lines.append(line)
+
+    def on_stderr(line: str) -> None:
+        stderr_lines.append(line)
+
+    stdout, stderr, exit_code = conn.exec_command(
+        "echo hello", on_stdout=on_stdout, on_stderr=on_stderr
+    )
+
+    assert stdout == "line1\nline2\nline3\n"
+    assert stderr == ""
+    assert exit_code == 0
+    assert stdout_lines == ["line1\n", "line2\n", "line3\n"]
+    assert stderr_lines == []
+
+    conn.close()
+
+
+@patch("ikctl.connection.ssh.paramiko.SSHClient")
+def test_exec_command_no_deadlock_with_large_output(mock_client_cls):
+    """exec_command() does not deadlock with large output before exit status."""
+    transport = _make_transport_mock()
+    mock_client = _make_client_mock()
+    mock_client_cls.return_value = mock_client
+
+    fragments = [b"x" * 8192 for _ in range(500)]
+    channel = _make_deadlock_channel(fragments)
+
+    stdout_mock = MagicMock()
+    stdout_mock.channel = channel
+
+    stderr_mock = MagicMock()
+    stderr_mock.channel = MagicMock()
+    stderr_mock.channel.recv_stderr_ready.return_value = False
+    stderr_mock.channel.recv_stderr.return_value = b""
+
+    mock_client.exec_command.return_value = (MagicMock(), stdout_mock, stderr_mock)
+
+    with _patch_transport(transport), \
+         patch("ikctl.connection.ssh.socket.create_connection"):
+
+        opts = SSHOptions(hostname="host.example.com", username="deploy",
+                          password="pw", allow_agent=False)
+        conn = SSHConnection(opts)
+
+    start = time.monotonic()
+    stdout, stderr, exit_code = conn.exec_command("some long-running command")
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 5.0, f"Took {elapsed:.2f}s — possible deadlock"
+    assert len(stdout) == 8192 * 500
+    assert stderr == ""
+    assert exit_code == 0
+
+    conn.close()
 
 
 # ---------------------------------------------------------------------------
