@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import socket
+import time
+from collections.abc import Callable
 
 import paramiko
 from paramiko import agent as paramiko_agent
@@ -164,13 +166,54 @@ class SSHConnection(IConnection):
                 continue
         raise paramiko.AuthenticationException("No agent key worked")
 
-    def exec_command(self, command: str) -> tuple[str, str, int]:
-        """Execute a command remotely. Returns (stdout, stderr, exit_code)."""
-        _, stdout_channel, stderr_channel = self._client.exec_command(command)
-        exit_code = stdout_channel.channel.recv_exit_status()
-        stdout = stdout_channel.read().decode("utf-8", errors="replace")
-        stderr = stderr_channel.read().decode("utf-8", errors="replace")
-        return stdout, stderr, exit_code
+    def exec_command(
+        self,
+        command: str,
+        on_stdout: Callable[[str], None] | None = None,
+        on_stderr: Callable[[str], None] | None = None,
+    ) -> tuple[str, str, int]:
+        """Execute a command remotely. Returns (stdout, stderr, exit_code).
+
+        Streams output in real time via on_stdout/on_stderr callbacks while
+        the remote command is still running. This prevents deadlocks when the
+        remote process produces more output than the SSH channel receive window
+        before exiting.
+        """
+        _, stdout_ch, stderr_ch = self._client.exec_command(command)
+        channel = stdout_ch.channel
+
+        stdout_buf: list[str] = []
+        stderr_buf: list[str] = []
+
+        # Drain both channels incrementally while waiting for exit status
+        while not channel.exit_status_ready():
+            if channel.recv_ready():
+                data = channel.recv(65536).decode("utf-8", errors="replace")
+                stdout_buf.append(data)
+                if on_stdout is not None:
+                    on_stdout(data)
+            if channel.recv_stderr_ready():
+                data = channel.recv_stderr(65536).decode("utf-8", errors="replace")
+                stderr_buf.append(data)
+                if on_stderr is not None:
+                    on_stderr(data)
+            if not channel.recv_ready() and not channel.recv_stderr_ready():
+                time.sleep(0.01)
+
+        # Drain any remaining data after exit status is set
+        while channel.recv_ready():
+            data = channel.recv(65536).decode("utf-8", errors="replace")
+            stdout_buf.append(data)
+            if on_stdout is not None:
+                on_stdout(data)
+        while channel.recv_stderr_ready():
+            data = channel.recv_stderr(65536).decode("utf-8", errors="replace")
+            stderr_buf.append(data)
+            if on_stderr is not None:
+                on_stderr(data)
+
+        exit_code = channel.recv_exit_status()
+        return "".join(stdout_buf), "".join(stderr_buf), exit_code
 
     def open_sftp(self) -> paramiko.SFTPClient:
         """Return an open SFTP client, reusing an existing one if available."""

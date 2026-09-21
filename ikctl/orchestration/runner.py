@@ -1,7 +1,6 @@
 """OrchestrationRunner: executes a pipeline DAG using existing kit runners."""
 from __future__ import annotations
 
-import argparse
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -14,6 +13,8 @@ from ikctl.executor.local import LocalExecutor
 from ikctl.orchestration.dag import DAGResolver
 from ikctl.orchestration.interpolator import OutputInterpolator
 from ikctl.orchestration.parser import PipelineDef, StepDef
+from ikctl.runner.base import RunOptions
+from ikctl.runner.dry_run import DryRunRunner
 from ikctl.runner.local import LocalRunner
 from ikctl.runner.remote import RemoteRunner
 
@@ -134,17 +135,27 @@ class OrchestrationRunner:
         except ServerNotFoundError as exc:
             return StepResult(id=step.id, status="failed", stderr=str(exc))
 
-        # Build step-specific options namespace
-        step_options = argparse.Namespace(
+        # Build step-specific options. A real RunOptions (not a hand-rolled
+        # Namespace covering only some of its fields) so every attribute the
+        # runners/resolve_remote_dir() read (.debug, .remote_dir,
+        # .force_upload, .stdout_output, .stderr_output, .strict, ...) is
+        # always present with its proper default.
+        dry_run = getattr(base_options, "dry_run", False)
+        step_options = RunOptions(
             sudo="sudo" if step.sudo else None,
             parameter=resolved_params if resolved_params else None,
             mode=self._mode,
-            dry_run=getattr(base_options, "dry_run", False),
+            dry_run=dry_run,
+            debug=getattr(base_options, "debug", False),
             parallel_workers=self._max_workers,
             sudo_password=self._sudo_password,
         )
 
-        if self._mode == "local":
+        # Mirrors _build_runner()'s own precedence in main.py: dry_run wins
+        # regardless of mode, so a pipeline preview never touches SSH.
+        if dry_run:
+            runner = DryRunRunner()
+        elif self._mode == "local":
             executor = LocalExecutor(timeout=self._timeout_exec)
             runner = LocalRunner(executor)
         else:

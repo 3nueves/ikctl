@@ -9,7 +9,7 @@ import pytest
 from ikctl.config.models import IkctlConfig, Context, KitPipeline, ServerGroup
 from ikctl.orchestration.parser import PipelineDef, StepDef
 from ikctl.orchestration.runner import OrchestrationRunner, StepResult
-from ikctl.runner.base import RunResult
+from ikctl.runner.base import RunOptions, RunResult
 
 
 def make_context(name: str = "default") -> Context:
@@ -255,6 +255,70 @@ class TestOrchestrationRunnerOutputPropagation:
 
         assert results[0].outputs["JOIN_TOKEN"] == "secret"
         assert results[0].outputs["JOIN_ENDPOINT"] == "10.0.0.1:6443"
+
+
+class TestOrchestrationRunnerStepOptions:
+    def test_step_options_is_a_run_options_instance(self, config, connection_factory):
+        """Regression: _execute_step must build a real RunOptions, not a hand-rolled
+        Namespace covering only some of its fields — RemoteRunner/LocalRunner/
+        DryRunRunner and resolve_remote_dir() all read attributes (.debug,
+        .remote_dir, .force_upload, .stdout_output, .stderr_output, .strict) that
+        a partial Namespace silently lacks, surfacing as AttributeError one
+        attribute at a time instead of failing clearly up front."""
+        runner = _make_runner(config, connection_factory)
+        pipeline = make_pipeline(make_step("a"))
+
+        captured_options = {}
+
+        def run_side_effect(kit, servers, options):
+            captured_options["options"] = options
+            # Touch every attribute the real runners/utils read from options.
+            _ = (options.debug, options.remote_dir, options.force_upload,
+                 options.stdout_output, options.stderr_output, options.strict)
+            return [RunResult(host="localhost", success=True, stdout="", stderr="")]
+
+        with patch("ikctl.orchestration.runner.KitRepository") as MockKitRepo, \
+             patch("ikctl.orchestration.runner.ServerRepository") as MockServerRepo, \
+             patch("ikctl.orchestration.runner.RemoteRunner") as MockRemoteRunner:
+
+            MockKitRepo.return_value.resolve.return_value = fake_kit()
+            MockServerRepo.return_value.resolve.return_value = fake_servers()
+            MockRemoteRunner.return_value.run.side_effect = run_side_effect
+
+            results = runner.run(pipeline, make_base_options())
+
+        assert results[0].status == "ok"
+        options = captured_options["options"]
+        assert isinstance(options, RunOptions)
+        assert options.debug is False
+        assert options.remote_dir is None
+
+
+class TestOrchestrationRunnerDryRun:
+    def test_dry_run_uses_dry_run_runner_not_remote(self, config, connection_factory):
+        """Regression: base_options.dry_run=True must route through DryRunRunner,
+        the same way _build_runner() does for a direct (non-pipeline) --install run."""
+        runner = _make_runner(config, connection_factory)
+        pipeline = make_pipeline(make_step("a"))
+
+        base_options = argparse.Namespace(dry_run=True, parallel_workers=1, mode="remote")
+
+        with patch("ikctl.orchestration.runner.KitRepository") as MockKitRepo, \
+             patch("ikctl.orchestration.runner.ServerRepository") as MockServerRepo, \
+             patch("ikctl.orchestration.runner.RemoteRunner") as MockRemoteRunner, \
+             patch("ikctl.orchestration.runner.DryRunRunner") as MockDryRunRunner:
+
+            MockKitRepo.return_value.resolve.return_value = fake_kit()
+            MockServerRepo.return_value.resolve.return_value = fake_servers()
+            MockDryRunRunner.return_value.run.return_value = [
+                RunResult(host="localhost", success=True, stdout="[DRY RUN]", stderr="")
+            ]
+
+            results = runner.run(pipeline, base_options)
+
+        MockDryRunRunner.return_value.run.assert_called_once()
+        MockRemoteRunner.return_value.run.assert_not_called()
+        assert results[0].status == "ok"
 
 
 class TestOrchestrationRunnerErrors:

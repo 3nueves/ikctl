@@ -554,3 +554,30 @@ Documentado en design.md como decisión consciente; añadir nombres por host es 
 - `feature_list.json` — status de #34 cambiado a `in_progress`
 
 ### Estado: done
+
+---
+
+## Sesion 2026-09-15 — Bugfix 36: streaming_remote_exec
+
+### Resumen
+
+- **Bug**: `SSHConnection.exec_command()` llamaba a `recv_exit_status()` antes de leer el canal. Si el proceso remoto generaba más salida que la ventana de recepción de paramiko (~MB), el remoto se bloqueaba escribiendo y `recv_exit_status()` nunca retornaba → deadlock.
+- **Fix**: Nuevo `exec_command()` con bucle de drenado incremental: lee `recv_ready()`/`recv_stderr_ready()` en un `while not exit_status_ready()` loop, con `time.sleep(0.01)` cuando no hay datos. Solo llama a `recv_exit_status()` tras haber drenado todo el output disponible.
+- Añadidos callbacks opcionales `on_stdout(line) / on_stderr(line)` invocados en tiempo real.
+- Actualizado `IConnection.exec_command()` con los nuevos parámetros opcionales.
+- `RemoteExecutor.execute()` propaga los callbacks a la conexión.
+- `RemoteRunner._run_on_host()` usa streaming para imprimir stdout/stderr en tiempo real con `--stdout`/`--stderr`.
+- 3 tests nuevos: `test_exec_command_streams_output_via_callbacks`, `test_exec_command_no_deadlock_with_large_output` (4MB en 500 fragmentos), `test_execute_propagates_streaming_callbacks`.
+
+### Archivos modificados
+
+- `ikctl/connection/interface.py` — firma de `exec_command` con `on_stdout`/`on_stderr`
+- `ikctl/connection/ssh.py` — `exec_command()` reescrito con streaming
+- `ikctl/executor/remote.py` — `execute()` propaga callbacks
+- `ikctl/runner/remote.py` — streaming en `_run_on_host()` para `--stdout`/`--stderr`
+- `tests/test_ssh_connection.py` — test de streaming + deadlock, mock actualizado
+- `tests/test_remote_executor.py` — test de propagación de callbacks, aserciones actualizadas
+- `tests/test_remote_runner.py` — `_make_connection` con `invoke_callbacks`, `FailingConn` actualizado
+- `feature_list.json` — status #36 cambiado a `in_progress` → `done`
+
+### Estado: done

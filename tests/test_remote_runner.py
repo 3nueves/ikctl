@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch, call
 
 import pytest
+from rich.console import Console
 
 from ikctl.exceptions import KitNotFoundError, SSHConnectionError
 from ikctl.config.models import KitPipeline, ServerGroup
@@ -31,9 +32,18 @@ def multi_servers():
     return ServerGroup(user="admin", port=22, hosts=["host1", "host2"])
 
 
-def _make_connection(exec_result=("output\n", "", 0)):
+def _make_connection(exec_result=("output\n", "", 0), invoke_callbacks=False):
     conn = MagicMock()
-    conn.exec_command.return_value = exec_result
+    stdout, stderr, exit_code = exec_result
+
+    def exec_command_side_effect(command, on_stdout=None, on_stderr=None):
+        if invoke_callbacks and on_stdout is not None and stdout:
+            on_stdout(stdout)
+        if invoke_callbacks and on_stderr is not None and stderr:
+            on_stderr(stderr)
+        return stdout, stderr, exit_code
+
+    conn.exec_command.side_effect = exec_command_side_effect
     sftp_client = MagicMock()
     sftp_client.listdir.return_value = []
     conn.open_sftp.return_value = sftp_client
@@ -84,8 +94,8 @@ def test_run_uploads_files_and_executes_pipeline(kit, servers):
     assert result.host == "192.168.1.10"
     assert result.success is True
     sftp_instance.smart_upload.assert_called_once()
-    conn.exec_command.assert_called_once_with(
-        "cd .ikctl/mykit; bash script.sh")
+    args, kwargs = conn.exec_command.call_args
+    assert args[0] == "cd .ikctl/mykit; bash script.sh"
 
 
 def test_run_raises_kit_not_found_for_empty_kit(empty_kit, servers):
@@ -116,7 +126,7 @@ def test_run_calls_connection_close_when_connection_factory_raises(kit, servers)
     closed = []
 
     class FailingConn:
-        def exec_command(self, cmd):
+        def exec_command(self, cmd, on_stdout=None, on_stderr=None):
             raise RuntimeError("SSH error")
 
         def open_sftp(self):
@@ -289,7 +299,7 @@ def test_stderr_shown_on_failure_without_debug(kit, servers):
 
 def test_stderr_shown_with_stderr_flag(kit, servers):
     """When a step fails with stderr_output=True, stderr lines appear in console output."""
-    conn = _make_connection(exec_result=("", "permission denied\nbad exit", 1))
+    conn = _make_connection(exec_result=("", "permission denied\nbad exit", 1), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 
@@ -326,7 +336,7 @@ def test_no_stdout_without_stdout_flag(kit, servers):
 
 def test_stdout_shown_with_stdout_flag(kit, servers):
     """With stdout_output=True, host command stdout appears in console output."""
-    conn = _make_connection(exec_result=("host_specific_output_line", "", 0))
+    conn = _make_connection(exec_result=("host_specific_output_line", "", 0), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 
@@ -350,7 +360,7 @@ def test_stdout_lines_prefixed_with_host_label():
         pipeline=["/local/kits/mykit/script.sh"],
     )
     servers = ServerGroup(user="admin", port=22, hosts=["10.30.0.53"])
-    conn = _make_connection(exec_result=("hello from host", "", 0))
+    conn = _make_connection(exec_result=("hello from host", "", 0), invoke_callbacks=True)
     runner = RemoteRunner(connection_factory=lambda host: conn)
     progress_mock = _make_progress_mock()
 
@@ -397,3 +407,46 @@ def test_label_uses_host_ip():
     assert lines_with_run, "Expected at least one RUN output line"
     for line in lines_with_run:
         assert "[10.0.0.1]" in line, f"Expected '[10.0.0.1]' in line, got: {line!r}"
+
+
+def _make_progress_with_real_console():
+    """Return a Progress-like mock backed by a real rich.console.Console.
+
+    Unlike `_make_progress_mock`, `.console.print` here is the real rich
+    renderer, so it actually parses markup and raises MarkupError on
+    unbalanced tags instead of just recording the raw call args.
+    """
+    progress = MagicMock()
+    progress.console = Console(record=True, force_terminal=True, width=200)
+    progress.add_task.return_value = 0
+    progress.__enter__ = MagicMock(return_value=progress)
+    progress.__exit__ = MagicMock(return_value=False)
+    return progress
+
+
+def test_stdout_printer_does_not_raise_markup_error(kit, servers):
+    """Stdout lines rendered through the real rich console must not raise MarkupError.
+
+    Regression test for a premature `[/cyan]` close in the stdout prefix that
+    left a trailing `[/]` with nothing to close, crashing every `--stdout` run.
+    """
+    conn = _make_connection(exec_result=("hello from host", "", 0), invoke_callbacks=True)
+    runner = RemoteRunner(connection_factory=lambda host: conn)
+    progress_real_console = _make_progress_with_real_console()
+
+    with _patch_progress(progress_real_console):
+        with patch("ikctl.runner.remote.SftpTransfer") as MockSftp:
+            sftp_instance = MagicMock()
+            sftp_instance.list_dir.return_value = []
+            MockSftp.return_value = sftp_instance
+
+            results = runner.run(kit, servers, RunOptions(stdout_output=True))
+
+    assert results[0].success is True
+
+    output = progress_real_console.console.export_text()
+    assert "hello from host" in output
+    assert "[192.168.1.10]" in output
+    assert "[cyan]" not in output
+    assert "[/]" not in output
+    assert "[/cyan]" not in output

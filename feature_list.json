@@ -676,8 +676,48 @@
         "./init.sh termina con [OK] Entorno listo"
       ],
       "sdd": true,
-      "status": "in_progress",
+      "status": "done",
       "type": "feature"
+    },
+    {
+      "id": 36,
+      "name": "streaming_remote_exec",
+      "title": "Streaming en tiempo real de la salida remota (evita deadlock por ventana de canal SSH llena)",
+      "description": "SSHConnection.exec_command() (ikctl/connection/ssh.py) llama a stdout_channel.channel.recv_exit_status() y solo después hace stdout_channel.read()/stderr_channel.read(). Como nadie drena el canal mientras el comando remoto sigue vivo, si ese comando genera más salida que la ventana de recepción de paramiko (unos pocos MB) antes de terminar, el proceso remoto se queda bloqueado escribiendo en su stdout (esperando que se libere ventana) y recv_exit_status() nunca retorna porque el remoto nunca llega a salir: deadlock. Esto es real con kits que loguean una línea por iteración en bucles largos (ej. buffer_delete/delete.sh logueando decenas de miles de líneas '[INFO] Eliminando: ...' a lo largo de varias horas). Solución: leer stdout/stderr de forma incremental (recv_ready()/recv_stderr_ready() con select.select, o equivalente) mientras se espera el exit status, y exponer esas líneas en streaming real hacia quien ejecuta el kit, en lugar de acumularlas y devolverlas solo al final.",
+      "acceptance": [
+        "SSHConnection.exec_command() (ikctl/connection/ssh.py) ya no llama a recv_exit_status() antes de leer el canal: drena stdout_channel y stderr_channel de forma incremental mientras el comando remoto sigue en ejecución",
+        "Un comando remoto que genere varios MB de salida antes de terminar no provoca deadlock: el proceso remoto nunca se queda esperando espacio libre en la ventana del canal porque el lado local va leyendo a medida que llega",
+        "exec_command() admite callbacks opcionales on_stdout(line: str) / on_stderr(line: str) invocados en tiempo real según llegan líneas, sin romper la firma de retorno actual (stdout: str, stderr: str, exit_code: int) para quien no los use",
+        "IConnection.exec_command() (ikctl/connection/interface.py) actualiza su firma para aceptar los callbacks opcionales, manteniendo compatibilidad con cualquier otra implementación de IConnection",
+        "RemoteExecutor.execute() (ikctl/executor/remote.py) propaga los callbacks de streaming a SSHConnection.exec_command()",
+        "RemoteRunner._run_on_host() (ikctl/runner/remote.py) usa el callback de streaming para imprimir cada línea de stdout/stderr por consola en tiempo real cuando --stdout/--stderr están activos, en lugar de esperar a que termine todo el step del pipeline",
+        "tests/test_ssh_connection.py cubre exec_command() con un canal mockeado que emite salida en varios fragmentos intercalados con el exit status retrasado, verificando que los callbacks se disparan a medida que llegan los fragmentos (no todo de golpe al final)",
+        "Nuevo test reproduce el bug original: canal mockeado con ventana de recepción pequeña (p.ej. 4KB) y un comando que necesita escribir más que eso antes de emitir el exit status; con la implementación actual (leer solo tras recv_exit_status) el test debe fallar/colgarse, y pasar tras el fix",
+        "El test del punto anterior usa un timeout explícito corto (p.ej. 5s) para que la suite no se cuelgue si la regresión reaparece",
+        "tests/test_remote_executor.py cubre que RemoteExecutor.execute() reenvía correctamente los callbacks de streaming a la conexión",
+        "uv run pytest tests -v pasa sin errores",
+        "./init.sh termina con [OK] Entorno listo"
+      ],
+      "status": "done",
+      "type": "bugfix"
+    },
+    {
+      "id": 37,
+      "name": "pipeline_step_options_incomplete",
+      "title": "OrchestrationRunner._execute_step construye un Namespace incompleto en vez de un RunOptions real",
+      "description": "OrchestrationRunner._execute_step (ikctl/orchestration/runner.py) construía un argparse.Namespace a mano con solo un subconjunto de los campos de RunOptions (sudo, parameter, mode, dry_run, parallel_workers, sudo_password), en vez de instanciar RunOptions directamente. RemoteRunner/DryRunRunner/resolve_remote_dir() leen otros campos (options.debug, options.remote_dir, options.force_upload, options.stdout_output, options.stderr_output, options.strict) que ese Namespace nunca definía, así que cualquier ikctl --pipeline ... en modo remote fallaba de inmediato en el primer step con AttributeError: 'Namespace' object has no attribute 'debug' (y tras arreglar ese, el siguiente atributo faltante — remote_dir — habría fallado igual). Además, _execute_step nunca miraba dry_run al elegir el runner (solo comprobaba self._mode == 'local' vs 'remote'), a diferencia de _build_runner() en main.py, que sí prioriza dry_run antes que el modo — por lo que ikctl --pipeline ... --dry-run tampoco preveía nada: intentaba ejecutar de verdad contra RemoteRunner y explotaba con el mismo AttributeError.",
+      "acceptance": [
+        "_execute_step construye un RunOptions real (ikctl.runner.base.RunOptions), no un argparse.Namespace parcial",
+        "_execute_step selecciona DryRunRunner cuando base_options.dry_run es verdadero, antes de mirar self._mode — igual que _build_runner() en main.py",
+        "tests/test_orchestration_runner.py cubre que el RunOptions construido expone .debug, .remote_dir (y de paso el resto de campos, vía isinstance) con sus valores por defecto",
+        "tests/test_orchestration_runner.py cubre que dry_run=True en base_options hace que se llame a DryRunRunner.run() y nunca a RemoteRunner.run()",
+        "Ambos tests reproducen el bug original (fallan contra el código sin arreglar) y pasan tras el fix",
+        "uv run pytest tests -v pasa sin errores (316 tests)",
+        "ruff check ikctl tests no introduce errores nuevos en los ficheros tocados",
+        "Verificado end-to-end contra un pipeline real (kits-mdc/pipelines/install-mdc.yaml, 20 steps): ikctl --pipeline ... --dry-run ya no lanza AttributeError y resuelve/previsualiza cada step (los únicos steps que no completan en --dry-run son los que dependen de un output KEY=VALUE real que DryRunRunner no genera, lo cual es el comportamiento esperado, no un bug)"
+      ],
+      "status": "done",
+      "type": "bugfix"
     }
   ]
 }

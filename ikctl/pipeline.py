@@ -8,7 +8,7 @@ from rich.console import Console
 
 from ikctl.config.config import Config
 from ikctl.exceptions import KitNotFoundError, ServerNotFoundError
-from ikctl.config.models import KitPipeline, ServerGroup
+from ikctl.config.models import ServerGroup
 from ikctl.context import Context
 from ikctl.logs import Log
 from ikctl.runner.base import IRunner, RunOptions, RunResult

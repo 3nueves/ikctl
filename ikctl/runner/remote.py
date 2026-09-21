@@ -144,25 +144,39 @@ class RemoteRunner(IRunner):
                     task_id,
                     description=f"[dim][bold cyan]{label}[/bold cyan] RUN     {_escape_markup(script)}...[/dim]",
                 )
-                stdout, stderr, exit_code = executor.execute(full_cmd)
+
+                def _make_stream_printer(flag: bool, prefix: str, color: str) -> Callable[[str], None] | None:
+                    if not flag:
+                        return None
+
+                    def printer(data: str) -> None:
+                        for line in data.splitlines():
+                            progress.console.print(
+                                f"{prefix}{_escape_markup(line)}[/]"
+                            )
+                    return printer
+
+                on_stdout = _make_stream_printer(
+                    options.stdout_output,
+                    # prefix must stay open (no closing tag) so the printer's trailing "[/]" closes it
+                    f"[cyan]{label} ",
+                    "cyan",
+                )
+
+                def _stderr_printer(data: str) -> None:
+                    for line in data.splitlines():
+                        progress.console.print(f"[red]{_escape_markup(line)}[/red]")
+
+                on_stderr = _stderr_printer if options.stderr_output else None
+
+                stdout, stderr, exit_code = executor.execute(
+                    full_cmd, on_stdout=on_stdout, on_stderr=on_stderr,
+                )
 
                 status_markup = "[bold green]OK[/bold green]" if exit_code == 0 else "[bold red]FAILED[/bold red]"
                 progress.console.print(
                     f"[bold cyan]{label}[/bold cyan] RUN     {_escape_markup(script):<40} {status_markup}"
                 )
-
-                # Show stderr on failure only when --stderr flag is set
-                if exit_code != 0 and options.stderr_output:
-                    for line in stderr.splitlines():
-                        progress.console.print(
-                            f"[red]{_escape_markup(line)}[/red]")
-
-                # Show stdout only with --stdout flag
-                if options.stdout_output:
-                    for line in stdout.splitlines():
-                        progress.console.print(
-                            f"[cyan]{label}[/cyan] {_escape_markup(line)}"
-                        )
 
                 all_stdout.extend(stdout.splitlines())
                 all_stderr.extend(stderr.splitlines())
