@@ -158,7 +158,8 @@ class RemoteRunner(IRunner):
 
                 on_stdout = _make_stream_printer(
                     options.stdout_output,
-                    f"[cyan]{label}[/cyan] ",
+                    # prefix must stay open (no closing tag) so the printer's trailing "[/]" closes it
+                    f"[cyan]{label} ",
                     "cyan",
                 )
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch, call
 
 import pytest
+from rich.console import Console
 
 from ikctl.exceptions import KitNotFoundError, SSHConnectionError
 from ikctl.config.models import KitPipeline, ServerGroup
@@ -406,3 +407,46 @@ def test_label_uses_host_ip():
     assert lines_with_run, "Expected at least one RUN output line"
     for line in lines_with_run:
         assert "[10.0.0.1]" in line, f"Expected '[10.0.0.1]' in line, got: {line!r}"
+
+
+def _make_progress_with_real_console():
+    """Return a Progress-like mock backed by a real rich.console.Console.
+
+    Unlike `_make_progress_mock`, `.console.print` here is the real rich
+    renderer, so it actually parses markup and raises MarkupError on
+    unbalanced tags instead of just recording the raw call args.
+    """
+    progress = MagicMock()
+    progress.console = Console(record=True, force_terminal=True, width=200)
+    progress.add_task.return_value = 0
+    progress.__enter__ = MagicMock(return_value=progress)
+    progress.__exit__ = MagicMock(return_value=False)
+    return progress
+
+
+def test_stdout_printer_does_not_raise_markup_error(kit, servers):
+    """Stdout lines rendered through the real rich console must not raise MarkupError.
+
+    Regression test for a premature `[/cyan]` close in the stdout prefix that
+    left a trailing `[/]` with nothing to close, crashing every `--stdout` run.
+    """
+    conn = _make_connection(exec_result=("hello from host", "", 0), invoke_callbacks=True)
+    runner = RemoteRunner(connection_factory=lambda host: conn)
+    progress_real_console = _make_progress_with_real_console()
+
+    with _patch_progress(progress_real_console):
+        with patch("ikctl.runner.remote.SftpTransfer") as MockSftp:
+            sftp_instance = MagicMock()
+            sftp_instance.list_dir.return_value = []
+            MockSftp.return_value = sftp_instance
+
+            results = runner.run(kit, servers, RunOptions(stdout_output=True))
+
+    assert results[0].success is True
+
+    output = progress_real_console.console.export_text()
+    assert "hello from host" in output
+    assert "[192.168.1.10]" in output
+    assert "[cyan]" not in output
+    assert "[/]" not in output
+    assert "[/cyan]" not in output
