@@ -35,7 +35,7 @@ Kits are **auto-discovered** — no index file needed. Any folder under `path_ki
 pipx install ikctl
 ```
 
-**With uv:**
+**With uv:** (on Windows if it fails with `Microsoft Visual C++ 14.0 or greater is required`, use `uv tool install ikctl --python 3.13`.)
 ```bash
 uv tool install ikctl
 ```
